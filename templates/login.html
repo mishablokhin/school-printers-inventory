@@ -1,18 +1,31 @@
 {% extends "base.html" %}
+{% load static %}
 {% block title %}Вход – Учёт картриджей{% endblock %}
+
 {% block content %}
   <div class="row justify-content-center">
     <div class="col-12 col-md-6 col-lg-5">
       <div class="card shadow-sm">
-        <div class="card-body p-4">
-          <h1 class="h4 mb-3 text-center">Вход в систему</h1>
+        <div class="card-body p-4 text-center">
+
+          {# === Логотип === #}
+          <div class="mb-3">
+            <img
+              src="{% static 'img/cartridge-logo.png' %}"
+              alt="Учёт картриджей"
+              style="width: 96px; height: auto;"
+            >
+          </div>
+
+          <h1 class="h4 mb-3">Вход в систему</h1>
+
           <p class="text-muted mb-4">
             Авторизация через Nextcloud (OpenID Connect).
           </p>
 
           <a class="btn btn-primary w-100"
              href="/accounts/oidc/nextcloud/login/">
-            Войти через NextСloud
+            Войти через NextCloud
           </a>
 
         </div>

@@ -1,0 +1,87 @@
+{% extends "base.html" %}
+{% block title %}Выдача – Учёт картриджей{% endblock %}
+
+{% block content %}
+<div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4">
+
+  <div class="section-head">
+    <div class="section-ico">
+      <i class="bi bi-box-arrow-up-right"></i>
+    </div>
+
+    <div class="section-kicker">
+      <h1 class="h5 section-title">
+        Выдача картриджей
+      </h1>
+      <div class="section-subtitle">
+        Оформите выдачу картриджа сотруднику школы
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<div class="card shadow-sm">
+  <div class="card-body">
+
+    <form method="post">
+      {% csrf_token %}
+
+      <div class="row g-3">
+        <div class="col-12">
+          <label class="form-label">Принтер</label>
+          {{ form.printer }}
+          <div class="form-text">
+            Сначала выбери принтер – список картриджей ниже будет только совместимых моделей.
+          </div>
+        </div>
+
+        <div class="col-12 col-md-6">
+          <label class="form-label">Картридж</label>
+          {{ form.cartridge }}
+        </div>
+
+        <div class="col-12 col-md-3">
+          <label class="form-label">Количество</label>
+          {{ form.qty }}
+        </div>
+
+        <div class="col-12 col-md-3">
+          <label class="form-label">Кому выдали</label>
+          {{ form.issued_to }}
+        </div>
+
+        <div class="col-12">
+          <label class="form-label">Комментарий</label>
+          {{ form.comment }}
+        </div>
+      </div>
+
+      {% if form.non_field_errors %}
+        <div class="alert alert-danger mt-3 mb-0">{{ form.non_field_errors }}</div>
+      {% endif %}
+
+      <div class="d-flex gap-2 mt-4">
+        <button class="btn btn-primary" type="submit">Сохранить</button>
+        <a class="btn btn-outline-secondary" href="{% url 'inventory:dashboard' %}">Отмена</a>
+      </div>
+    </form>
+
+  </div>
+</div>
+
+<script>
+  // Двухшаговая логика: при выборе принтера перезагружаем страницу с ?printer=<id>
+  document.addEventListener("DOMContentLoaded", () => {
+    const printerSelect = document.querySelector('select[name="printer"]');
+    if (!printerSelect) return;
+    printerSelect.addEventListener("change", () => {
+      const id = printerSelect.value;
+      const url = new URL(window.location.href);
+      if (id) url.searchParams.set("printer", id);
+      else url.searchParams.delete("printer");
+      window.location.href = url.toString();
+    });
+  });
+</script>
+{% endblock %}

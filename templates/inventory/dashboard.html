@@ -1,0 +1,132 @@
+{% extends "base.html" %}
+{% load inventory_extras %}
+
+{% block title %}Остатки – Учёт картриджей{% endblock %}
+
+{% block content %}
+<div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-3">
+
+  <div class="section-head">
+    <div class="section-ico">
+      <i class="bi bi-box-seam"></i>
+    </div>
+
+    <div class="section-kicker">
+      <h1 class="h5 section-title">
+        Остатки картриджей по всей школе
+      </h1>
+      <div class="section-subtitle">
+        Отображается общее количество картриджей и их совместимость с принтерами
+      </div>
+    </div>
+  </div>
+
+  <div class="d-flex flex-wrap gap-2">
+    <a class="btn btn-outline-secondary btn-sm"
+       href="{% url 'inventory:journal' %}">
+      Журнал
+    </a>
+
+    <a class="btn btn-primary btn-sm"
+       href="{% url 'inventory:stock_in' %}">
+      + Приход
+    </a>
+
+    <a class="btn btn-secondary btn-sm"
+       href="{% url 'inventory:stock_out' %}">
+      – Выдача
+    </a>
+  </div>
+
+</div>
+
+{% if buildings %}
+  <div class="card shadow-sm mb-4">
+    <div class="card-body">
+
+      <div class="d-flex align-items-start justify-content-between gap-3 mb-3">
+        <div class="d-flex align-items-start gap-3">
+          <div class="help-ico">
+            <i class="bi bi-buildings"></i>
+          </div>
+
+          <div>
+            <div class="fw-semibold">
+              Статистика по корпусам
+            </div>
+            <div class="text-muted small">
+              Просмотр остатков картриджей по каждому корпусу. Выберите нужный корпус
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="d-flex flex-wrap gap-2">
+        {% for b in buildings %}
+          <a class="btn btn-outline-dark btn-sm"
+             href="{% url 'inventory:building_stats' b.id %}">
+            {{ b.name }}
+          </a>
+        {% endfor %}
+      </div>
+
+    </div>
+  </div>
+{% endif %}
+
+<style>
+  .inv-row { border-top: 1px solid rgba(0,0,0,.06); }
+  .inv-row:first-child { border-top: 0; }
+  .inv-pill { display:inline-flex; align-items:center; padding:.28rem .6rem; border-radius:999px; background: rgba(0,0,0,.04); }
+  .inv-muted { color: rgba(0,0,0,.55); }
+  .inv-stock {
+    min-width: 96px;
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+  }
+</style>
+
+<div class="card shadow-sm">
+  <div class="card-body p-0">
+    {% for c in cartridges %}
+      <div class="px-3 px-md-4 py-3 inv-row">
+        <div class="d-flex align-items-start justify-content-between gap-3">
+          <div class="flex-grow-1">
+            <div class="d-flex flex-wrap align-items-center gap-2">
+              <div class="fs-6 fw-semibold">
+                {{ c.vendor }} {{ c.code }}
+              </div>
+              {% if c.title %}
+                <span class="text-muted">•</span>
+                <div class="text-muted">{{ c.title }}</div>
+              {% endif %}
+            </div>
+
+            <div class="mt-2 d-flex flex-wrap gap-2">
+              {% for pm in c.compatible_printers.all %}
+                <span class="inv-pill">
+                  <span class="inv-muted me-1">Для принтера</span>
+                  <span class="fw-semibold">{{ pm.vendor }} {{ pm.model }}</span>
+                </span>
+              {% empty %}
+                <span class="text-muted">Совместимость не задана</span>
+              {% endfor %}
+            </div>
+          </div>
+
+          <div class="inv-stock">
+            <div class="text-muted small">Остаток</div>
+            <div class="fs-4 fw-semibold">
+              {{ stock_map|get_item:c.id|default:"0" }}
+            </div>
+          </div>
+        </div>
+      </div>
+    {% empty %}
+      <div class="text-center text-muted py-5">
+        Пока нет добавленных моделей картриджей
+      </div>
+    {% endfor %}
+  </div>
+</div>
+{% endblock %}

@@ -10,6 +10,7 @@ def home(request):
     return render(request, "login.html")
 
 
+
 @login_required
 def me(request):
     sa = request.user.socialaccount_set.first()
@@ -22,18 +23,23 @@ def me(request):
     )
 
     hour = datetime.now().hour
+
     if 5 <= hour < 12:
         greeting = "Доброе утро"
+        greeting_time = "morning"
     elif 12 <= hour < 18:
         greeting = "Добрый день"
+        greeting_time = "day"
     else:
         greeting = "Добрый вечер"
+        greeting_time = "evening"
 
     return render(
         request,
         "me.html",
         {
             "greeting": greeting,
+            "greeting_time": greeting_time,
             "full_name": full_name,
         },
     )

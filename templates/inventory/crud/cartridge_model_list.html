@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+{% block title %}Модели картриджей – Учёт картриджей{% endblock %}
+
+{% block content %}
+<div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4">
+
+  <div class="section-head">
+    <div class="section-ico">
+      <i class="bi bi-droplet-fill"></i>
+    </div>
+
+    <div class="section-text">
+      <h1 class="h5 mb-1">Модели картриджей</h1>
+      <div class="text-muted">
+        Справочник моделей картриджей и их описаний
+      </div>
+    </div>
+  </div>
+
+  <a class="btn btn-primary btn-sm"
+     href="{% url 'inventory:cartridge_model_add' %}">
+    <i class="bi bi-plus-lg me-1"></i>
+    Добавить
+  </a>
+
+</div>
+
+<style>
+  .list-row { border-top: 1px solid rgba(0,0,0,.06); }
+  .list-row:first-child { border-top: 0; }
+  .muted { color: rgba(0,0,0,.55); }
+</style>
+
+<div class="card shadow-sm">
+  <div class="card-body p-0">
+    {% for c in items %}
+      <div class="px-3 px-md-4 py-3 list-row">
+        <div class="d-flex flex-wrap align-items-start justify-content-between gap-3">
+          <div class="flex-grow-1">
+            <div class="fs-6 fw-semibold">
+              {{ c.vendor }} {{ c.code }}
+            </div>
+
+            {% if c.title %}
+              <div class="mt-1 muted">
+                {{ c.title }}
+              </div>
+            {% else %}
+              <div class="mt-1 text-muted">
+                Описание не указано
+              </div>
+            {% endif %}
+          </div>
+
+          <div class="d-flex flex-wrap gap-2 justify-content-end">
+            <a class="btn btn-outline-secondary btn-sm"
+               href="{% url 'inventory:cartridge_model_edit' c.id %}">
+              Редактировать
+            </a>
+            <a class="btn btn-outline-danger btn-sm"
+               href="{% url 'inventory:cartridge_model_delete' c.id %}">
+              Удалить
+            </a>
+          </div>
+        </div>
+      </div>
+    {% empty %}
+      <div class="text-center text-muted py-5">
+        Пока пусто
+      </div>
+    {% endfor %}
+  </div>
+</div>
+
+<div class="text-muted small mt-3">
+  Совместимость с моделями принтеров настраивается при редактировании картриджа.
+</div>
+{% endblock %}

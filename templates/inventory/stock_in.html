@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% block title %}Приход – Учёт картриджей{% endblock %}
+
+{% block content %}
+<div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4">
+
+  <div class="section-head">
+    <div class="section-ico">
+      <i class="bi bi-box-arrow-in-down"></i>
+    </div>
+
+    <div class="section-kicker">
+      <h1 class="h5 section-title">
+        Приход на склад
+      </h1>
+      <div class="section-subtitle">
+        Внесите поступившие картриджи в систему
+      </div>
+    </div>
+  </div>
+
+</div>
+
+
+<div class="card shadow-sm">
+  <div class="card-body">
+    <form method="post">
+      {% csrf_token %}
+
+      <div class="row g-3">
+        <div class="col-12 col-md-6">
+          <label class="form-label">Картридж</label>
+          {{ form.cartridge }}
+        </div>
+        <div class="col-12 col-md-3">
+          <label class="form-label">Количество</label>
+          {{ form.qty }}
+        </div>
+        <div class="col-12 col-md-3">
+          <label class="form-label">Корпус (необязательно)</label>
+          {{ form.building }}
+        </div>
+
+        <div class="col-12">
+          <label class="form-label">Комментарий</label>
+          {{ form.comment }}
+        </div>
+      </div>
+
+      {% if form.non_field_errors %}
+        <div class="alert alert-danger mt-3 mb-0">{{ form.non_field_errors }}</div>
+      {% endif %}
+
+      <div class="d-flex gap-2 mt-4">
+        <button class="btn btn-primary" type="submit">Сохранить</button>
+        <a class="btn btn-outline-secondary" href="{% url 'inventory:dashboard' %}">Отмена</a>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

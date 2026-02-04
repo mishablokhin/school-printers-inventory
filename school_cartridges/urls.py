@@ -8,4 +8,6 @@ urlpatterns = [
     path("", core_views.home, name="home"),
     path("me/", core_views.me, name="me"),
     path("logout/", core_views.logout_view, name="logout"),
+
+    path("inventory/", include("inventory.urls")),
 ]

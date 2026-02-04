@@ -2,26 +2,271 @@
 {% block title %}Учёт картриджей{% endblock %}
 
 {% block content %}
+<style>
+  .help-step {
+    display: flex;
+    gap: .9rem;
+    padding: .9rem 1rem;
+    border-radius: .9rem;
+    background: rgba(0,0,0,.03);
+    border: 1px solid rgba(0,0,0,.06);
+  }
+
+  .help-ico {
+    width: 40px;
+    height: 40px;
+    border-radius: 999px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0,0,0,.06);
+    flex: 0 0 40px;
+  }
+
+  .help-ico i { font-size: 1.2rem; }
+
+  .help-title { font-weight: 600; margin-bottom: .15rem; }
+  .help-text { color: rgba(0,0,0,.6); }
+  .help-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: .35rem;
+    padding: .2rem .6rem;
+    border-radius: 999px;
+    background: rgba(13,110,253,.08);
+    color: rgba(13,110,253,.95);
+    font-weight: 600;
+    font-size: .85rem;
+  }
+
+  .help-divider {
+    height: 1px;
+    background: rgba(0,0,0,.07);
+    margin: .9rem 0;
+  }
+</style>
+
 <div class="row justify-content-center">
-  <div class="col-12 col-md-8 col-lg-6">
+  <div class="col-12 col-md-9 col-lg-7">
     <div class="card shadow-sm">
-      <div class="card-body p-4">
+      <div class="card-body p-4 p-md-5">
 
-        <h1 class="h5 mb-2">
-          {{ greeting }}, {{ full_name }}
+{# === Приветствие (отдельный блок) === #}
+<style>
+  .welcome-box {
+    border: 1px solid rgba(0,0,0,.06);
+    background: rgba(0,0,0,.03);
+    border-radius: 1rem;
+    padding: 1rem 1.1rem;
+  }
+  .welcome-ico {
+    width: 42px;
+    height: 42px;
+    border-radius: 999px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0,0,0,.06);
+    border: 1px solid rgba(0,0,0,.06);
+    flex: 0 0 42px;
+  }
+  .welcome-ico i { font-size: 1.25rem; }
+  .welcome-title { line-height: 1.15; }
+  .welcome-sub { color: rgba(0,0,0,.6); }
+
+  .nc-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: .55rem;
+    padding: .45rem .7rem;
+    border-radius: 999px;
+    background: rgba(0,0,0,.04);
+    border: 1px solid rgba(0,0,0,.06);
+  }
+  .nc-ava {
+    width: 28px;
+    height: 28px;
+    border-radius: 999px;
+    object-fit: cover;
+    border: 1px solid rgba(0,0,0,.12);
+    background: rgba(0,0,0,.04);
+  }
+</style>
+
+{# достаём аватарку из NextCloud #}
+{% with sa=request.user.socialaccount_set.first %}
+{% with extra=sa.extra_data %}
+{% with user_pic=extra.userinfo.picture|default:extra.id_token.picture %}
+<div class="welcome-box mb-3">
+  <div class="d-flex align-items-start justify-content-between gap-3 flex-wrap">
+    <div class="d-flex align-items-start gap-3">
+      <div class="welcome-ico">
+        {% if greeting_time == "morning" %}
+          <i class="bi bi-sun-fill text-warning"></i>
+        {% elif greeting_time == "day" %}
+          <i class="bi bi-building text-primary"></i>
+        {% elif greeting_time == "evening" %}
+          <i class="bi bi-moon-stars-fill" style="color:#6f42c1;"></i>
+        {% else %}
+          <i class="bi bi-hand-thumbs-up text-success"></i>
+        {% endif %}
+      </div>
+
+      <div>
+        <h1 class="h5 mb-1 welcome-title">
+          {{ greeting }}, {{ full_name }}!
         </h1>
-
-        <p class="text-muted mb-4">
+        <div class="welcome-sub">
           Вы вошли в систему, используя свой аккаунт NextCloud.
-        </p>
+        </div>
+      </div>
+    </div>
 
-        <div class="d-flex flex-column flex-sm-row gap-2">
-          <a class="btn btn-primary" href="/">
-            Перейти в сервис
-          </a>
+    <div class="ms-auto">
+      <div class="nc-chip">
+        {% if user_pic %}
+          <img src="{{ user_pic }}" alt="" class="nc-ava">
+        {% else %}
+          <span class="welcome-ico" style="width:28px;height:28px;flex:0 0 28px;">
+            <i class="bi bi-cloud-fill text-info" style="font-size: .95rem;"></i>
+          </span>
+        {% endif %}
 
-          <a class="btn btn-outline-secondary" href="{% url 'logout' %}">
-            Выйти
+        <div class="d-flex flex-column lh-sm">
+          <small class="text-muted">Профиль NextCloud</small>
+          <span class="fw-semibold" style="font-size:.95rem;">{{ request.user.username }}</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endwith %}
+{% endwith %}
+{% endwith %}
+
+        {# === Инструкция === #}
+        <div class="rounded-4 p-3 p-md-4" style="background: rgba(0,0,0,.035); border: 1px solid rgba(0,0,0,.06);">
+          <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
+            <div class="fw-semibold d-flex align-items-center gap-2">
+              <i class="bi bi-compass"></i>
+              <span>Как начать работу с сервисом</span>
+            </div>
+
+            <span class="help-badge">
+              <i class="bi bi-exclamation-circle"></i>
+              Сначала заполните справочники
+            </span>
+          </div>
+
+          <div class="help-step">
+            <div class="help-ico">
+              <i class="bi bi-buildings"></i>
+            </div>
+            <div>
+              <div class="help-title">Шаг 1 – Корпуса</div>
+              <div class="help-text">
+                Добавьте корпуса школы (например: ШО1, ШО2, ШО3) и их адреса.
+              </div>
+              <div class="mt-2">
+                <a class="btn btn-outline-secondary btn-sm" href="{% url 'inventory:buildings' %}">
+                  Открыть «Корпуса»
+                </a>
+              </div>
+            </div>
+          </div>
+
+          <div class="help-divider"></div>
+
+          <div class="help-step">
+            <div class="help-ico">
+              <i class="bi bi-door-open"></i>
+            </div>
+            <div>
+              <div class="help-title">Шаг 2 – Кабинеты</div>
+              <div class="help-text">
+                Добавьте кабинеты внутри корпусов и укажите ответственного (ФИО/почту) - чтобы было понятно, кто отвечает за кабинет.
+              </div>
+              <div class="mt-2">
+                <a class="btn btn-outline-secondary btn-sm" href="{% url 'inventory:rooms' %}">
+                  Открыть «Кабинеты»
+                </a>
+              </div>
+            </div>
+          </div>
+
+          <div class="help-divider"></div>
+
+          <div class="help-step">
+            <div class="help-ico">
+              <i class="bi bi-printer"></i>
+            </div>
+            <div>
+              <div class="help-title">Шаг 3 – Принтеры и модели</div>
+              <div class="help-text">
+                Добавьте модели принтеров, затем распределите принтеры по кабинетам (по желанию можно указать инвентарный номер).
+              </div>
+              <div class="mt-2 d-flex flex-wrap gap-2">
+                <a class="btn btn-outline-secondary btn-sm" href="{% url 'inventory:printer_models' %}">
+                  Модели принтеров
+                </a>
+                <a class="btn btn-outline-secondary btn-sm" href="{% url 'inventory:printers' %}">
+                  Принтеры
+                </a>
+              </div>
+            </div>
+          </div>
+
+          <div class="help-divider"></div>
+
+          <div class="help-step">
+            <div class="help-ico">
+              <i class="bi bi-droplet-fill"></i>
+            </div>
+            <div>
+              <div class="help-title">Шаг 4 – Картриджи и совместимость</div>
+              <div class="help-text">
+                Добавьте модели картриджей и укажите, к каким моделям принтеров они подходят.
+                Это важно: при выдаче система покажет только совместимые картриджи.
+              </div>
+              <div class="mt-2">
+                <a class="btn btn-outline-secondary btn-sm" href="{% url 'inventory:cartridge_models' %}">
+                  Открыть «Модели картриджей»
+                </a>
+              </div>
+            </div>
+          </div>
+
+          <div class="help-divider"></div>
+
+          <div class="help-step">
+            <div class="help-ico">
+              <i class="bi bi-arrow-left-right"></i>
+            </div>
+            <div>
+              <div class="help-title">Шаг 5 – Учёт движений</div>
+              <div class="help-text">
+                Теперь можно вести учёт: <strong>приход</strong> (поступление на склад) и <strong>выдача</strong> (к конкретному принтеру).
+                Все операции автоматически попадут в журнал.
+              </div>
+              <div class="mt-2 d-flex flex-wrap gap-2">
+                <a class="btn btn-outline-primary btn-sm" href="{% url 'inventory:stock_in' %}">
+                  + Приход
+                </a>
+                <a class="btn btn-outline-primary btn-sm" href="{% url 'inventory:stock_out' %}">
+                  – Выдача
+                </a>
+                <a class="btn btn-outline-secondary btn-sm" href="{% url 'inventory:journal' %}">
+                  Журнал
+                </a>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {# === Кнопка перехода === #}
+        <div class="mt-4 d-flex flex-column flex-sm-row gap-2">
+          <a class="btn btn-primary text-center" href="{% url 'inventory:dashboard' %}">
+            Перейти к учёту
           </a>
         </div>
 
