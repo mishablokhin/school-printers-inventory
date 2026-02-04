@@ -1,0 +1,19 @@
+# Replace with your real domain:
+# cartridges.example.school
+
+{$APP_DOMAIN}
+
+encode zstd gzip
+
+# If you terminate TLS in Caddy on the server:
+# tls you@school.example
+
+@static path /static/* /media/*
+handle @static {
+  # Whitenoise serves static from Django, but keeping this as a placeholder
+  reverse_proxy web:8000
+}
+
+handle {
+  reverse_proxy web:8000
+}

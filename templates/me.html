@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block title %}Учёт картриджей{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-12 col-md-8 col-lg-6">
+    <div class="card shadow-sm">
+      <div class="card-body p-4">
+
+        <h1 class="h5 mb-2">
+          {{ greeting }}, {{ full_name }}
+        </h1>
+
+        <p class="text-muted mb-4">
+          Вы вошли в систему, используя свой аккаунт NextCloud.
+        </p>
+
+        <div class="d-flex flex-column flex-sm-row gap-2">
+          <a class="btn btn-primary" href="/">
+            Перейти в сервис
+          </a>
+
+          <a class="btn btn-outline-secondary" href="{% url 'logout' %}">
+            Выйти
+          </a>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
