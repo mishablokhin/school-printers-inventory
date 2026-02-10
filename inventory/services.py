@@ -6,7 +6,6 @@ from .models import GlobalStock, BuildingStock, StockTransaction
 
 @transaction.atomic
 def apply_transaction(tx: StockTransaction):
-    # гарантируем строки остатков
     GlobalStock.objects.select_for_update().get_or_create(cartridge=tx.cartridge)
 
     bs_exists = False
@@ -24,7 +23,7 @@ def apply_transaction(tx: StockTransaction):
             ).update(qty=F("qty") + tx.qty)
         return
 
-    # OUT: атомарно списываем (не даём уйти в минус)
+    # Картриджи не могут уходить в минус
     updated = GlobalStock.objects.filter(
         cartridge=tx.cartridge, qty__gte=tx.qty
     ).update(qty=F("qty") - tx.qty)
@@ -36,5 +35,5 @@ def apply_transaction(tx: StockTransaction):
             building=tx.building, cartridge=tx.cartridge, qty__gte=tx.qty
         ).update(qty=F("qty") - tx.qty)
         if updated == 0:
-            # транзакция откатит и глобальное списание тоже
+            # Откат глобальных изменений при транзакции
             raise ValueError("Недостаточно картриджей в остатке корпуса.")

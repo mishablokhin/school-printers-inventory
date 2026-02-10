@@ -40,9 +40,8 @@ class DashboardView(LoginRequiredMixin, TemplateView):
             .order_by("vendor", "code")
         )
 
-        # Поиск:
-        # - по картриджу: vendor/code/title
-        # - по принтеру (совместимости): compatible_printers.vendor/model
+        # Поиск по картриджу: vendor/code/title
+        # Поиск по принтеру (совместимости): compatible_printers.vendor/model
         if q:
             cartridges = (
                 cartridges
@@ -254,8 +253,7 @@ class StockOutCreateView(LoginRequiredMixin, CreateView):
             else ""
         )
 
-        # быстрый серверный пред-чек по корпусу (для UX-кнопки)
-        # не обязателен, но оставляем
+        # Проверка на сервере формы
         if tx.building_id and tx.cartridge_id:
             bqty = (
                 BuildingStock.objects
@@ -562,8 +560,7 @@ class PrinterUpdate(LoginRequiredMixin, UpdateView):
     def get_form_kwargs(self):
         kwargs = super().get_form_kwargs()
         building_id = (self.request.GET.get("building") or "").strip()
-        # если в URL не передали building — оставляем None,
-        # форма сама подставит initial из instance.room.building
+        # Если в URL не передали building — оставляем None, форма сама подставит initial из instance.room.building
         kwargs["building_id"] = building_id or None
         return kwargs
 

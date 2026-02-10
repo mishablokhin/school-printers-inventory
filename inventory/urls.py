@@ -11,7 +11,7 @@ urlpatterns = [
     path("stock/out/", views.StockOutCreateView.as_view(), name="stock_out"),
     path("journal/", views.JournalView.as_view(), name="journal"),
 
-    # CRUD – корпуса
+    # CRUD – корпуса школы
     path("buildings/", views.BuildingList.as_view(), name="buildings"),
     path("buildings/add/", views.BuildingCreate.as_view(), name="building_add"),
     path("buildings/<int:pk>/edit/", views.BuildingUpdate.as_view(), name="building_edit"),
@@ -29,7 +29,7 @@ urlpatterns = [
     path("printer-models/<int:pk>/edit/", views.PrinterModelUpdate.as_view(), name="printer_model_edit"),
     path("printer-models/<int:pk>/delete/", views.PrinterModelDelete.as_view(), name="printer_model_delete"),
 
-    # CRUD – модели картриджей + совместимость
+    # CRUD – модели картриджей и совместимость
     path("cartridge-models/", views.CartridgeModelList.as_view(), name="cartridge_models"),
     path("cartridge-models/add/", views.CartridgeModelCreate.as_view(), name="cartridge_model_add"),
     path("cartridge-models/<int:pk>/edit/", views.CartridgeModelUpdate.as_view(), name="cartridge_model_edit"),

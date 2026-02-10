@@ -130,9 +130,7 @@ SOCIALACCOUNT_PROVIDERS = {
                 "secret": OIDC_CLIENT_SECRET,
                 "settings": {
                     "server_url": OIDC_SERVER_URL,
-                    # Nextcloud OIDC supports the Authorization Code flow; PKCE is supported as well.
                     "pkce_enabled": True,
-                    # Ask for profile+email so we can show full name
                     "scope": ["openid", "profile", "email"],
                 },
             },
@@ -142,7 +140,6 @@ SOCIALACCOUNT_PROVIDERS = {
 
 SOCIALACCOUNT_LOGIN_ON_GET = True
 
-# Security bits (good defaults behind Caddy)
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 USE_X_FORWARDED_HOST = True
 

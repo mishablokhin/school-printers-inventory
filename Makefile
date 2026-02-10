@@ -1,4 +1,4 @@
-.PHONY: help up down build logs sh migrate createsuperuser collectstatic server-up server-down
+.PHONY: help up down build logs sh migrate createsuperuser collectstatic server-up server-down server-pull server-deploy
 
 help:
 	@echo "Targets:"
@@ -42,3 +42,12 @@ server-up:
 
 server-down:
 	docker compose -f docker-compose.yml -f docker-compose.prod.yml down
+
+
+server-pull:
+	git pull --ff-only
+
+server-deploy: server-pull
+	docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
+	docker compose -f docker-compose.yml -f docker-compose.prod.yml exec web python manage.py migrate
+	docker compose -f docker-compose.yml -f docker-compose.prod.yml exec web python manage.py collectstatic --noinput

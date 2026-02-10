@@ -21,7 +21,6 @@ def order_rooms_queryset(qs):
     """
     qs = qs.select_related("building")
 
-    # PostgreSQL: можно аккуратно вытащить цифры regexp_replace и сортировать числом
     if connection.vendor == "postgresql":
         digits_only = Func(
             "number",
@@ -150,25 +149,25 @@ class PrinterForm(forms.ModelForm):
         building_id = kwargs.pop("building_id", None)
         super().__init__(*args, **kwargs)
 
-        # модели принтеров — нормальная сортировка
+        # Модели принтеров — сортировка
         self.fields["printer_model"].queryset = PrinterModel.objects.order_by("vendor", "model")
 
-        # кабинет по умолчанию пустой, пока корпус не выбран
+        # Кабинет пустой, если не выбран корпус
         self.fields["room"].queryset = Room.objects.none()
 
-        # если редактирование — выставим building по текущему room
+        # Выставляем корпус по текущему выбранному кабинету
         if self.instance and self.instance.pk and self.instance.room_id:
             self.initial.setdefault("building", self.instance.room.building_id)
 
-        # если building_id не пришёл, попробуем взять из initial (при редактировании)
+        # если building_id не пришёл, попробуем взять из initial
         if not building_id:
             building_id = self.initial.get("building")
 
-        # корпус выбран → показываем только кабинеты этого корпуса
+        # Если выбран корпус, то показываем кабинеты этого корпуса
         if building_id:
             rooms_qs = Room.objects.filter(building_id=building_id)
-            # сортировка "как при выдаче": по номеру кабинета натурально
-            rooms_qs = order_rooms_queryset(rooms_qs)  # building один, по факту будет number_int/number
+            # Сортировка по номеру кабинета
+            rooms_qs = order_rooms_queryset(rooms_qs)
             self.fields["room"].queryset = rooms_qs
             self.initial["building"] = building_id
 
@@ -205,13 +204,12 @@ class StockInForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-        # удобная сортировка везде
+        # Сортировка
         self.fields["cartridge"].queryset = CartridgeModel.objects.order_by("vendor", "code")
         self.fields["building"].queryset = Building.objects.order_by("name")
 
 
 class StockOutForm(forms.ModelForm):
-    # дополнительные поля, которых нет в модели StockTransaction
     building = forms.ModelChoiceField(
         queryset=Building.objects.none(),
         required=True,
@@ -228,7 +226,6 @@ class StockOutForm(forms.ModelForm):
 
     class Meta:
         model = StockTransaction
-        # issued_to убираем — будет подставляться автоматически
         fields = ["building", "room", "printer", "cartridge", "qty", "comment"]
         labels = {
             "printer": "Принтер",
@@ -249,24 +246,23 @@ class StockOutForm(forms.ModelForm):
         printer_id = kwargs.pop("printer_id", None)
         super().__init__(*args, **kwargs)
 
-        # сортировка корпуса — всегда
+        # Сортировка по корпусу
         self.fields["building"].queryset = Building.objects.order_by("name")
 
-        # По умолчанию: ничего не показываем, пока не выбрали корпус/кабинет
+        # Ничего не показываем, пока не выбрано ничего в форме
         self.fields["printer"].queryset = Printer.objects.none()
         self.fields["cartridge"].queryset = CartridgeModel.objects.none()
 
-        # Корпус → фильтруем кабинеты (и сортируем "правильно")
+        # Корпус - фильтрация по кабинетам
         if building_id:
             rooms_qs = Room.objects.filter(building_id=building_id)
-            rooms_qs = order_rooms_queryset(rooms_qs)  # будет сортировка building__name, number_int, number
-            # но building один и тот же — фактически останется number_int, number
+            rooms_qs = order_rooms_queryset(rooms_qs)  # Сортировка building__name, number_int, number
             self.fields["room"].queryset = rooms_qs
             self.initial["building"] = building_id
         else:
             self.fields["room"].queryset = Room.objects.none()
 
-        # Кабинет → фильтруем принтеры (сортируем по модели и инв. метке)
+        # Сортировка принтеров по модели и инв. номеру)
         if room_id:
             self.fields["printer"].queryset = (
                 Printer.objects.select_related("printer_model", "room", "room__building")
@@ -275,7 +271,7 @@ class StockOutForm(forms.ModelForm):
             )
             self.initial["room"] = room_id
 
-        # Принтер → фильтруем картриджи по совместимости (сортируем vendor/code)
+        # Фильтруем картриджи по совместимости (vendor/code)
         if printer_id:
             try:
                 printer = Printer.objects.select_related("printer_model").get(pk=printer_id)

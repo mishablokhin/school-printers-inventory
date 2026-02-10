@@ -110,7 +110,7 @@ class StockTransaction(models.Model):
     # Куда относится движение (для статистики по корпусам)
     building = models.ForeignKey(Building, on_delete=models.PROTECT, null=True, blank=True)
 
-    # Для выдачи – конкретный принтер/кабинет
+    # Для выдачи - конкретный принтер/кабинет
     printer = models.ForeignKey(Printer, on_delete=models.PROTECT, null=True, blank=True)
     issued_to = models.CharField(max_length=255, blank=True)  # кому выдали (ФИО)
     comment = models.TextField(blank=True)
@@ -122,9 +122,9 @@ class StockTransaction(models.Model):
         if self.tx_type == self.Type.OUT:
             if not self.printer:
                 raise ValidationError("Для выдачи нужно указать принтер.")
-            # building можно вывести из printer.room.building, но поле оставляем для статистики
+            # Оставить для статистики
         if self.tx_type == self.Type.IN:
-            # приход может быть «общий» (без корпуса) или в корпус
+            # Приход только если указан корпус
             pass
 
         # Проверка совместимости
