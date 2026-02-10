@@ -21,22 +21,25 @@
     </div>
   </div>
 
-  <div class="d-flex flex-wrap gap-2">
-    <a class="btn btn-outline-secondary btn-sm"
-       href="{% url 'inventory:journal' %}">
-      Журнал
-    </a>
+    <div class="d-flex flex-wrap gap-2">
+      <a class="btn btn-outline-secondary btn-m d-inline-flex align-items-center gap-1"
+         href="{% url 'inventory:journal' %}">
+        <i class="bi bi-journal-text"></i>
+        <span>Журнал</span>
+      </a>
 
-    <a class="btn btn-primary btn-sm"
-       href="{% url 'inventory:stock_in' %}">
-      + Приход
-    </a>
+      <a class="btn btn-primary btn-m d-inline-flex align-items-center gap-1"
+         href="{% url 'inventory:stock_in' %}">
+        <i class="bi bi-box-arrow-in-down"></i>
+        <span>Приход</span>
+      </a>
 
-    <a class="btn btn-secondary btn-sm"
-       href="{% url 'inventory:stock_out' %}">
-      – Выдача
-    </a>
-  </div>
+      <a class="btn btn-secondary btn-m d-inline-flex align-items-center gap-1"
+         href="{% url 'inventory:stock_out' %}">
+        <i class="bi bi-box-arrow-up-right"></i>
+        <span>Выдача</span>
+      </a>
+    </div>
 
 </div>
 
@@ -104,8 +107,8 @@
 
             <div class="mt-2 d-flex flex-wrap gap-2">
               {% for pm in c.compatible_printers.all %}
-                <span class="inv-pill">
-                  <span class="inv-muted me-1">Для принтера</span>
+                <span class="inv-pill d-inline-flex align-items-center gap-1">
+                  <i class="bi bi-printer inv-muted"></i>
                   <span class="fw-semibold">{{ pm.vendor }} {{ pm.model }}</span>
                 </span>
               {% empty %}

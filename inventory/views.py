@@ -2,7 +2,9 @@ from django.contrib.auth.mixins import LoginRequiredMixin
 from django.db.models import Q
 from django.shortcuts import redirect
 from django.urls import reverse_lazy
+from django.db import transaction
 from django.views.generic import ListView, CreateView, UpdateView, DeleteView, TemplateView
+from django.core.exceptions import ValidationError
 
 from .forms import (
     BuildingForm, RoomForm, PrinterModelForm, CartridgeModelForm, PrinterForm,
@@ -12,6 +14,7 @@ from .models import (
     Building, Room, PrinterModel, CartridgeModel, Printer,
     GlobalStock, BuildingStock, StockTransaction
 )
+from .services import apply_transaction
 
 
 # -------------------------
@@ -76,7 +79,23 @@ class StockInCreateView(LoginRequiredMixin, CreateView):
         tx = form.save(commit=False)
         tx.created_by = self.request.user
         tx.tx_type = StockTransaction.Type.IN
-        tx.save()
+
+        try:
+            with transaction.atomic():
+                tx.full_clean()
+                tx.save()
+                apply_transaction(tx)
+        except ValidationError as e:
+            # ошибки модели (qty==0 и т.п.)
+            for field, errors in (e.message_dict or {}).items():
+                for msg in errors:
+                    form.add_error(field if field in form.fields else None, msg)
+            return self.form_invalid(form)
+        except ValueError as e:
+            # ошибки остатков из apply_transaction
+            form.add_error(None, str(e))
+            return self.form_invalid(form)
+
         return redirect(self.success_url)
 
 
@@ -85,27 +104,129 @@ class StockOutCreateView(LoginRequiredMixin, CreateView):
     form_class = StockOutForm
     success_url = reverse_lazy("inventory:journal")
 
-    def get_form(self, form_class=None):
-        form = super().get_form(form_class)
+    def _get_ids(self):
+        src = self.request.POST if self.request.method == "POST" else self.request.GET
+        building_id = src.get("building") or ""
+        room_id = src.get("room") or ""
+        printer_id = src.get("printer") or ""
+        cartridge_id = src.get("cartridge") or ""
+        return building_id, room_id, printer_id, cartridge_id
 
-        # Фильтрация списка картриджей по выбранному принтеру (двухшаговая форма)
-        printer_id = self.request.GET.get("printer") or self.request.POST.get("printer")
-        if printer_id:
-            try:
-                printer = Printer.objects.select_related("printer_model", "room__building").get(pk=printer_id)
-                compatible = CartridgeModel.objects.filter(compatible_printers=printer.printer_model).order_by("vendor", "code")
-                form.fields["cartridge"].queryset = compatible
-                form.initial["printer"] = printer
-            except Printer.DoesNotExist:
-                pass
-        return form
+    def get_form_kwargs(self):
+        kwargs = super().get_form_kwargs()
+        building_id, room_id, printer_id, _ = self._get_ids()
+        kwargs.update(
+            {
+                "building_id": building_id or None,
+                "room_id": room_id or None,
+                "printer_id": printer_id or None,
+            }
+        )
+        return kwargs
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        building_id, room_id, printer_id, cartridge_id = self._get_ids()
+
+        selected_building = Building.objects.filter(pk=building_id).first() if building_id else None
+        selected_room = Room.objects.select_related("building").filter(pk=room_id).first() if room_id else None
+        selected_printer = (
+            Printer.objects.select_related("printer_model", "room", "room__building")
+            .filter(pk=printer_id).first()
+            if printer_id else None
+        )
+
+        printers_in_room = []
+        if selected_room:
+            printers_in_room = (
+                Printer.objects.select_related("printer_model")
+                .filter(room=selected_room)
+                .order_by("printer_model__vendor", "printer_model__model", "inventory_tag")
+            )
+
+        selected_cartridge = None
+        building_qty = None
+        global_qty = None
+        can_issue = True
+
+        form = ctx.get("form")
+        cartridge_qs = form.fields["cartridge"].queryset if form and "cartridge" in form.fields else None
+        if cartridge_id and cartridge_qs is not None:
+            selected_cartridge = cartridge_qs.filter(pk=cartridge_id).first()
+
+        if selected_building and selected_cartridge:
+            building_qty = (
+                BuildingStock.objects
+                .filter(building=selected_building, cartridge=selected_cartridge)
+                .values_list("qty", flat=True)
+                .first()
+            )
+            building_qty = 0 if building_qty is None else building_qty
+            can_issue = building_qty > 0
+
+        if selected_cartridge:
+            global_qty = (
+                GlobalStock.objects
+                .filter(cartridge=selected_cartridge)
+                .values_list("qty", flat=True)
+                .first()
+            )
+            global_qty = 0 if global_qty is None else global_qty
+
+        ctx.update(
+            {
+                "selected_building": selected_building,
+                "selected_room": selected_room,
+                "selected_printer": selected_printer,
+                "printers_in_room": printers_in_room,
+                "selected_cartridge": selected_cartridge,
+                "building_qty": building_qty,
+                "global_qty": global_qty,
+                "can_issue": can_issue,
+            }
+        )
+        return ctx
 
     def form_valid(self, form):
         tx = form.save(commit=False)
         tx.created_by = self.request.user
         tx.tx_type = StockTransaction.Type.OUT
+
+        # building + issued_to автоматически
         tx.building = tx.printer.room.building if tx.printer else None
-        tx.save()
+        tx.issued_to = (
+            tx.printer.room.owner_name
+            if (tx.printer and tx.printer.room and tx.printer.room.owner_name)
+            else ""
+        )
+
+        # быстрый серверный пред-чек по корпусу (для UX-кнопки)
+        # не обязателен, но оставляем
+        if tx.building_id and tx.cartridge_id:
+            bqty = (
+                BuildingStock.objects
+                .filter(building_id=tx.building_id, cartridge_id=tx.cartridge_id)
+                .values_list("qty", flat=True)
+                .first()
+            ) or 0
+            if bqty <= 0:
+                form.add_error(None, "Недостаточно картриджей в выбранном корпусе.")
+                return self.form_invalid(form)
+
+        try:
+            with transaction.atomic():
+                tx.full_clean()   # совместимость/qty/printer и т.п.
+                tx.save()
+                apply_transaction(tx)
+        except ValidationError as e:
+            for field, errors in (e.message_dict or {}).items():
+                for msg in errors:
+                    form.add_error(field if field in form.fields else None, msg)
+            return self.form_invalid(form)
+        except ValueError as e:
+            form.add_error(None, str(e))
+            return self.form_invalid(form)
+
         return redirect(self.success_url)
 
 

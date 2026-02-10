@@ -5,6 +5,7 @@ from .models import (
 )
 
 
+
 class BuildingForm(forms.ModelForm):
     class Meta:
         model = Building
@@ -111,22 +112,72 @@ class StockInForm(forms.ModelForm):
 
 
 class StockOutForm(forms.ModelForm):
+    # дополнительные поля, которых нет в модели StockTransaction
+    building = forms.ModelChoiceField(
+        queryset=Building.objects.order_by("name"),
+        required=True,
+        label="Корпус",
+        widget=forms.Select(attrs={"class": "form-select"}),
+    )
+
+    room = forms.ModelChoiceField(
+        queryset=Room.objects.none(),
+        required=True,
+        label="Кабинет",
+        widget=forms.Select(attrs={"class": "form-select"}),
+    )
+
     class Meta:
         model = StockTransaction
-        fields = ["printer", "cartridge", "qty", "issued_to", "comment"]
+        # issued_to убираем — будет подставляться автоматически
+        fields = ["building", "room", "printer", "cartridge", "qty", "comment"]
         labels = {
             "printer": "Принтер",
             "cartridge": "Картридж",
             "qty": "Количество",
-            "issued_to": "Кому выдано",
             "comment": "Комментарий",
         }
         widgets = {
             "printer": forms.Select(attrs={"class": "form-select"}),
             "cartridge": forms.Select(attrs={"class": "form-select"}),
             "qty": forms.NumberInput(attrs={"class": "form-control", "min": 1}),
-            "issued_to": forms.TextInput(
-                attrs={"class": "form-control", "placeholder": "ФИО получателя"}
-            ),
             "comment": forms.Textarea(attrs={"class": "form-control", "rows": 2}),
         }
+
+    def __init__(self, *args, **kwargs):
+        building_id = kwargs.pop("building_id", None)
+        room_id = kwargs.pop("room_id", None)
+        printer_id = kwargs.pop("printer_id", None)
+        super().__init__(*args, **kwargs)
+
+        # По умолчанию: ничего не показываем, пока не выбрали корпус/кабинет
+        self.fields["printer"].queryset = Printer.objects.none()
+        self.fields["cartridge"].queryset = CartridgeModel.objects.none()
+
+        # Корпус → фильтруем кабинеты
+        if building_id:
+            self.fields["room"].queryset = Room.objects.filter(building_id=building_id).order_by("number")
+            self.initial["building"] = building_id
+        else:
+            self.fields["room"].queryset = Room.objects.none()
+
+        # Кабинет → фильтруем принтеры
+        if room_id:
+            self.fields["printer"].queryset = (
+                Printer.objects.select_related("printer_model", "room", "room__building")
+                .filter(room_id=room_id)
+                .order_by("printer_model__vendor", "printer_model__model", "inventory_tag")
+            )
+            self.initial["room"] = room_id
+
+        # Принтер → фильтруем картриджи по совместимости
+        if printer_id:
+            try:
+                printer = Printer.objects.select_related("printer_model").get(pk=printer_id)
+                self.fields["cartridge"].queryset = (
+                    CartridgeModel.objects.filter(compatible_printers=printer.printer_model)
+                    .order_by("vendor", "code")
+                )
+                self.initial["printer"] = printer_id
+            except Printer.DoesNotExist:
+                pass

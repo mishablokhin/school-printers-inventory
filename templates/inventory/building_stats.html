@@ -44,10 +44,10 @@
 
             <div class="mt-2 d-flex flex-wrap gap-2">
               {% for pm in c.compatible_printers.all %}
-                <span class="inv-pill">
-                  <span class="inv-muted me-1">Для принтера</span>
-                  <span class="fw-semibold">{{ pm.vendor }} {{ pm.model }}</span>
-                </span>
+            <span class="inv-pill d-inline-flex align-items-center gap-1">
+              <i class="bi bi-printer inv-muted"></i>
+              <span class="fw-semibold">{{ pm.vendor }} {{ pm.model }}</span>
+            </span>
               {% empty %}
                 <span class="text-muted">Совместимость не задана</span>
               {% endfor %}

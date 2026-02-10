@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}Журнал движений{% endblock %}
+{% block title %}Журнал движений - Учёт картриджей{% endblock %}
 
 {% block content %}
 <div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-3">
@@ -20,11 +20,26 @@
   </div>
 
 
-  <div class="d-flex flex-wrap gap-2">
-    <a class="btn btn-outline-secondary btn-sm" href="{% url 'inventory:dashboard' %}">Остатки</a>
-    <a class="btn btn-primary btn-sm" href="{% url 'inventory:stock_in' %}">+ Приход</a>
-    <a class="btn btn-primary btn-sm" href="{% url 'inventory:stock_out' %}">– Выдача</a>
-  </div>
+<div class="d-flex flex-wrap gap-2">
+  <a class="btn btn-outline-secondary btn-m d-inline-flex align-items-center gap-1"
+     href="{% url 'inventory:dashboard' %}">
+    <i class="bi bi-boxes"></i>
+    <span>Остатки</span>
+  </a>
+
+  <a class="btn btn-primary btn-m d-inline-flex align-items-center gap-1"
+     href="{% url 'inventory:stock_in' %}">
+    <i class="bi bi-box-arrow-in-down"></i>
+    <span>Приход</span>
+  </a>
+
+  <a class="btn btn-secondary btn-m d-inline-flex align-items-center gap-1"
+     href="{% url 'inventory:stock_out' %}">
+    <i class="bi bi-box-arrow-up-right"></i>
+    <span>Выдача</span>
+  </a>
+</div>
+
 </div>
 
 <form class="mb-3" method="get">

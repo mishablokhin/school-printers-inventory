@@ -2,23 +2,92 @@
 {% block title %}Выдача – Учёт картриджей{% endblock %}
 
 {% block content %}
-<div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4">
+<style>
+  .section-head {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+  }
+  .section-ico {
+    width: 44px;
+    height: 44px;
+    border-radius: 999px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0,0,0,.06);
+    border: 1px solid rgba(0,0,0,.08);
+    flex: 0 0 44px;
+  }
+  .section-ico i {
+    font-size: 1.2rem;
+    color: rgba(0,0,0,.7);
+  }
+  .section-title { margin: 0; }
+  .section-subtitle { color: rgba(0,0,0,.6); }
 
+  .info-card {
+    background: rgba(0,0,0,.03);
+    border: 1px solid rgba(0,0,0,.06);
+    border-radius: 1rem;
+    padding: 1rem;
+  }
+  .info-line { color: rgba(0,0,0,.65); }
+  .tag {
+    display: inline-flex;
+    align-items: center;
+    gap: .35rem;
+    padding: .2rem .6rem;
+    border-radius: 999px;
+    background: rgba(0,0,0,.05);
+    white-space: nowrap;
+  }
+
+  .stock-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: .45rem;
+    padding: .25rem .7rem;
+    border-radius: 999px;
+    background: rgba(0,0,0,.05);
+    border: 1px solid rgba(0,0,0,.06);
+    font-weight: 600;
+  }
+  .stock-ok { color: rgba(25,135,84,.95); background: rgba(25,135,84,.08); border-color: rgba(25,135,84,.18); }
+  .stock-bad { color: rgba(220,53,69,.95); background: rgba(220,53,69,.08); border-color: rgba(220,53,69,.18); }
+
+  /* === заголовки блоков внутри формы === */
+  .form-block-title{
+    display:flex;
+    align-items:center;
+    gap:.5rem;
+    font-weight:600;
+    margin-bottom:.25rem;
+  }
+  .form-block-subtitle{
+    color: rgba(0,0,0,.6);
+    font-size: .9rem;
+  }
+  .form-divider{
+    height: 1px;
+    background: rgba(0,0,0,.08);
+    margin: 1rem 0;
+  }
+</style>
+
+<div class="d-flex flex-wrap align-items-start justify-content-between gap-3 mb-4">
   <div class="section-head">
     <div class="section-ico">
       <i class="bi bi-box-arrow-up-right"></i>
     </div>
 
-    <div class="section-kicker">
-      <h1 class="h5 section-title">
-        Выдача картриджей
-      </h1>
+    <div>
+      <h1 class="h5 section-title">Выдача картриджей</h1>
       <div class="section-subtitle">
         Оформите выдачу картриджа сотруднику школы
       </div>
     </div>
   </div>
-
 </div>
 
 <div class="card shadow-sm">
@@ -28,17 +97,106 @@
       {% csrf_token %}
 
       <div class="row g-3">
+
+        {# ===== Блок 1: Куда выдаём ===== #}
         <div class="col-12">
+          <div class="form-block-title">
+            <i class="bi bi-geo-alt"></i>
+            <span>Куда выдаём</span>
+          </div>
+          <div class="form-block-subtitle">
+            Выберите корпус, кабинет и принтер, указанный для этого кабинета
+          </div>
+        </div>
+
+        <div class="col-12 col-md-4">
+          <label class="form-label">Корпус</label>
+          {{ form.building }}
+        </div>
+
+        <div class="col-12 col-md-4">
+          <label class="form-label">Кабинет</label>
+          {{ form.room }}
+        </div>
+
+        <div class="col-12 col-md-4">
           <label class="form-label">Принтер</label>
           {{ form.printer }}
-          <div class="form-text">
-            Сначала выбери принтер – список картриджей ниже будет только совместимых моделей.
+        </div>
+
+        {% if selected_room %}
+          <div class="col-12">
+            <div class="info-card">
+              <div class="d-flex flex-wrap align-items-start justify-content-between gap-3">
+                <div>
+                  <div class="fw-semibold d-flex align-items-center gap-2">
+                    <i class="bi bi-info-circle"></i>
+                    <span>Информация о выбранном кабинете</span>
+                  </div>
+
+                  <div class="mt-2">
+                    <div class="info-line">
+                      <span class="text-muted">Корпус:</span>
+                      <strong>{{ selected_room.building.name }}</strong>
+                      <span class="text-muted">•</span>
+                      <span class="text-muted">Кабинет:</span>
+                      <strong>{{ selected_room.number }}</strong>
+                    </div>
+
+                    <div class="info-line mt-1">
+                      <span class="text-muted">Ответственный:</span>
+                      {% if selected_room.owner_name %}
+                        <strong>{{ selected_room.owner_name }}</strong>
+                        {% if selected_room.owner_email %}
+                          <span class="text-muted">•</span>
+                          <span class="text-muted">{{ selected_room.owner_email }}</span>
+                        {% endif %}
+                      {% else %}
+                        <span class="text-muted">не указан</span>
+                      {% endif %}
+                    </div>
+                  </div>
+                </div>
+
+                <div class="text-end">
+                  {% for p in printers_in_room %}
+                    <div class="tag mb-1">
+                      <i class="bi bi-printer"></i>
+                      <span>{{ p.printer_model.vendor }} {{ p.printer_model.model }}</span>
+                      {% if p.inventory_tag %}
+                        <span class="text-muted">·</span><span class="text-muted">{{ p.inventory_tag }}</span>
+                      {% endif %}
+                    </div>
+                  {% empty %}
+                    <div class="text-muted small">Принтеры не добавлены</div>
+                  {% endfor %}
+                </div>
+              </div>
+            </div>
+          </div>
+        {% endif %}
+
+        <div class="col-12">
+          <div class="form-divider"></div>
+        </div>
+
+        {# ===== Блок 2: Что выдаём ===== #}
+        <div class="col-12">
+          <div class="form-block-title">
+            <i class="bi bi-box-seam"></i>
+            <span>Что выдаём</span>
+          </div>
+          <div class="form-block-subtitle">
+            Выберите картридж, совместимый с принтером. После выбора отобразится остаток картриджей по корпусу и школе
           </div>
         </div>
 
         <div class="col-12 col-md-6">
-          <label class="form-label">Картридж</label>
+          <label class="form-label">Картридж к выдаче</label>
           {{ form.cartridge }}
+          <div class="form-text text-muted" id="hint-cartridge" style="display:none;">
+            Сначала выберите принтер – список будет только совместимых моделей.
+          </div>
         </div>
 
         <div class="col-12 col-md-3">
@@ -46,15 +204,58 @@
           {{ form.qty }}
         </div>
 
-        <div class="col-12 col-md-3">
-          <label class="form-label">Кому выдали</label>
-          {{ form.issued_to }}
-        </div>
+        {# === Карточка остатков по корпусу (появляется после выбора картриджа) === #}
+        {% if selected_building and selected_cartridge and building_qty is not None %}
+          <div class="col-12">
+            <div class="info-card">
+              <div class="d-flex flex-wrap align-items-start justify-content-between gap-3">
+                <div>
+                  <div class="fw-semibold d-flex align-items-center gap-2">
+                    <i class="bi bi-box-seam"></i>
+                    <span>Остаток картриджей</span>
+                  </div>
+
+                  <div class="mt-2 info-line">
+                    <span class="text-muted">Корпус:</span>
+                    <strong>{{ selected_building.name }}</strong>
+                    <span class="text-muted">•</span>
+                    <span class="text-muted">Картридж:</span>
+                    <strong>{{ selected_cartridge.vendor }} {{ selected_cartridge.code }}</strong>
+                  </div>
+                </div>
+
+                <div class="text-end">
+                  {% if building_qty > 0 %}
+                    <div class="stock-pill stock-ok">
+                      <i class="bi bi-check-circle"></i>
+                      В корпусе: {{ building_qty }} шт.
+                    </div>
+                  {% else %}
+                    <div class="stock-pill stock-bad">
+                      <i class="bi bi-exclamation-triangle"></i>
+                      В корпусе: 0 шт.
+                    </div>
+                    <div class="text-muted small mt-1">
+                      Нельзя оформить выдачу – сначала сделайте приход в этот корпус.
+                    </div>
+                  {% endif %}
+
+                  {% if global_qty is not None %}
+                    <div class="text-muted small mt-2">
+                      Общий остаток по школе: <strong>{{ global_qty }}</strong> шт.
+                    </div>
+                  {% endif %}
+                </div>
+              </div>
+            </div>
+          </div>
+        {% endif %}
 
         <div class="col-12">
-          <label class="form-label">Комментарий</label>
+          <label class="form-label">Комментарий <span class="text-muted">(необязательно)</span></label>
           {{ form.comment }}
         </div>
+
       </div>
 
       {% if form.non_field_errors %}
@@ -62,8 +263,13 @@
       {% endif %}
 
       <div class="d-flex gap-2 mt-4">
-        <button class="btn btn-primary" type="submit">Сохранить</button>
-        <a class="btn btn-outline-secondary" href="{% url 'inventory:dashboard' %}">Отмена</a>
+        <button class="btn btn-primary" id="btn-submit" type="submit"
+                {% if selected_building and selected_cartridge and building_qty is not None and building_qty <= 0 %}
+                  disabled
+                {% endif %}>
+          Оформить выдачу
+        </button>
+        <a class="btn btn-outline-secondary" href="{% url 'inventory:stock_out' %}">Очистить форму</a>
       </div>
     </form>
 
@@ -71,17 +277,111 @@
 </div>
 
 <script>
-  // Двухшаговая логика: при выборе принтера перезагружаем страницу с ?printer=<id>
+  // building -> room -> printer (+ cartridge)
   document.addEventListener("DOMContentLoaded", () => {
-    const printerSelect = document.querySelector('select[name="printer"]');
-    if (!printerSelect) return;
-    printerSelect.addEventListener("change", () => {
-      const id = printerSelect.value;
+    const building = document.querySelector('select[name="building"]');
+    const room = document.querySelector('select[name="room"]');
+    const printer = document.querySelector('select[name="printer"]');
+    const cartridge = document.querySelector('select[name="cartridge"]');
+
+    const hintRoom = document.getElementById("hint-room");
+    const hintPrinter = document.getElementById("hint-printer");
+    const hintCartridge = document.getElementById("hint-cartridge");
+
+    const setDisabled = () => {
+      const buildingChosen = building && building.value;
+      const roomChosen = room && room.value;
+      const printerChosen = printer && printer.value;
+
+      if (room) room.disabled = !buildingChosen;
+      if (printer) printer.disabled = !roomChosen;
+      if (cartridge) cartridge.disabled = !printerChosen;
+
+      if (hintRoom) hintRoom.style.display = buildingChosen ? "none" : "block";
+      if (hintPrinter) hintPrinter.style.display = roomChosen ? "none" : "block";
+      if (hintCartridge) hintCartridge.style.display = printerChosen ? "none" : "block";
+    };
+
+    const reloadWith = (params) => {
       const url = new URL(window.location.href);
-      if (id) url.searchParams.set("printer", id);
-      else url.searchParams.delete("printer");
+
+      if (params.reset === "room") {
+        url.searchParams.delete("room");
+        url.searchParams.delete("printer");
+        url.searchParams.delete("cartridge");
+      }
+      if (params.reset === "printer") {
+        url.searchParams.delete("printer");
+        url.searchParams.delete("cartridge");
+      }
+      if (params.reset === "cartridge") {
+        url.searchParams.delete("cartridge");
+      }
+
+      Object.entries(params.set || {}).forEach(([k, v]) => {
+        if (v) url.searchParams.set(k, v);
+        else url.searchParams.delete(k);
+      });
+
       window.location.href = url.toString();
-    });
+    };
+
+    setDisabled();
+
+    if (building) {
+      building.addEventListener("change", () => {
+        setDisabled();
+        reloadWith({ reset: "room", set: { building: building.value } });
+      });
+    }
+
+    if (room) {
+      room.addEventListener("change", () => {
+        setDisabled();
+        reloadWith({
+          reset: "printer",
+          set: { building: building ? building.value : "", room: room.value }
+        });
+      });
+    }
+
+    if (printer) {
+      printer.addEventListener("change", () => {
+        setDisabled();
+        reloadWith({
+          reset: "cartridge",
+          set: {
+            building: building ? building.value : "",
+            room: room ? room.value : "",
+            printer: printer.value
+          }
+        });
+      });
+    }
+
+    if (cartridge) {
+      cartridge.addEventListener("change", () => {
+        setDisabled();
+        reloadWith({
+          set: {
+            building: building ? building.value : "",
+            room: room ? room.value : "",
+            printer: printer ? printer.value : "",
+            cartridge: cartridge.value
+          }
+        });
+      });
+    }
+
+    const url = new URL(window.location.href);
+    const cartridgeFromUrl = url.searchParams.get("cartridge");
+
+    if (cartridge && cartridgeFromUrl) {
+      const hasOption = Array.from(cartridge.options).some(o => o.value === cartridgeFromUrl);
+      if (hasOption) {
+        cartridge.value = cartridgeFromUrl;
+      }
+    }
   });
 </script>
 {% endblock %}

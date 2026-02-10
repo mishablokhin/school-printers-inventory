@@ -6,34 +6,35 @@ from .models import GlobalStock, BuildingStock, StockTransaction
 
 @transaction.atomic
 def apply_transaction(tx: StockTransaction):
-    # Глобальный остаток
-    gs, _ = GlobalStock.objects.select_for_update().get_or_create(cartridge=tx.cartridge)
+    # гарантируем строки остатков
+    GlobalStock.objects.select_for_update().get_or_create(cartridge=tx.cartridge)
 
-    # Остаток корпуса (если задан корпус)
-    bs = None
+    bs_exists = False
     if tx.building_id:
-        bs, _ = BuildingStock.objects.select_for_update().get_or_create(
+        BuildingStock.objects.select_for_update().get_or_create(
             building=tx.building, cartridge=tx.cartridge
         )
+        bs_exists = True
 
     if tx.tx_type == StockTransaction.Type.IN:
-        gs.qty = F("qty") + tx.qty
-        gs.save(update_fields=["qty"])
-        if bs:
-            bs.qty = F("qty") + tx.qty
-            bs.save(update_fields=["qty"])
+        GlobalStock.objects.filter(cartridge=tx.cartridge).update(qty=F("qty") + tx.qty)
+        if bs_exists:
+            BuildingStock.objects.filter(
+                building=tx.building, cartridge=tx.cartridge
+            ).update(qty=F("qty") + tx.qty)
         return
 
-    # OUT
-    # списываем из глобального
-    if gs.qty < tx.qty:
+    # OUT: атомарно списываем (не даём уйти в минус)
+    updated = GlobalStock.objects.filter(
+        cartridge=tx.cartridge, qty__gte=tx.qty
+    ).update(qty=F("qty") - tx.qty)
+    if updated == 0:
         raise ValueError("Недостаточно картриджей в общем остатке.")
-    gs.qty = F("qty") - tx.qty
-    gs.save(update_fields=["qty"])
 
-    # и из остатка корпуса (если ведём корпусной склад)
-    if bs:
-        if bs.qty < tx.qty:
+    if bs_exists:
+        updated = BuildingStock.objects.filter(
+            building=tx.building, cartridge=tx.cartridge, qty__gte=tx.qty
+        ).update(qty=F("qty") - tx.qty)
+        if updated == 0:
+            # транзакция откатит и глобальное списание тоже
             raise ValueError("Недостаточно картриджей в остатке корпуса.")
-        bs.qty = F("qty") - tx.qty
-        bs.save(update_fields=["qty"])
