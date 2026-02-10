@@ -1,46 +1,83 @@
-# School Cartridges SSO (каркас)
+# School Cartridges SSO
 
-Минимальный каркас Django-приложения с авторизацией через Nextcloud по OpenID Connect (H2CK/oidc):
-- страница входа
-- страница пользователя (ФИО из Nextcloud)
-- выход
+A web-based inventory management system for tracking printers and cartridge stock in a school or educational organization.  
+The application is designed for internal IT and administrative use and integrates with **Nextcloud** for authentication via **OpenID Connect (OIDC)**.
 
-## Быстрый старт (локально)
+The project started as a minimal SSO-enabled Django skeleton and evolved into a full-featured inventory system with per-building storage, printer–cartridge compatibility, and a detailed transaction journal.
 
-1) Скопируй переменные окружения:
+---
+
+## ✨ Key Features
+
+- 🔐 **Single Sign-On via Nextcloud (OIDC)**
+  - Login using existing Nextcloud accounts
+  - Automatic user profile creation
+  - User full name is taken from Nextcloud profile data
+
+- 🖨 **Printer & Cartridge Inventory**
+  - Manage buildings, rooms, printers, printer models, and cartridge models
+  - Define compatibility between printers and cartridges
+  - Track stock globally and per building
+
+- 📦 **Stock Management**
+  - Incoming stock (warehouse replenishment)
+  - Outgoing stock (issuance to specific printers)
+  - Automatic stock balance updates
+  - Server-side validation to prevent negative balances
+
+- 📖 **Transaction Journal**
+  - Full history of all stock movements
+  - Search by cartridge, printer, building, or responsible person
+
+- 🐳 **Docker-based Deployment**
+  - Separate configurations for development and production
+  - One-command startup via `make`
+
+---
+
+## 🧩 Technology Stack
+
+- **Backend:** Django  
+- **Authentication:** Nextcloud OpenID Connect (via `django-allauth`)  
+- **Database:** PostgreSQL (recommended), SQLite for local development  
+- **Reverse Proxy:** Caddy  
+- **Containerization:** Docker & Docker Compose  
+- **Frontend:** Django Templates + Bootstrap Icons  
+
+---
+
+## 🚀 Quick Start (Local Development)
+
+### 1) Copy environment variables
 
 ```bash
 cp .env .env
 ```
 
-2) Заполни:
-- `OIDC_SERVER_URL`
-- `OIDC_CLIENT_ID`
-- `OIDC_CLIENT_SECRET`
+### 2) Configure OIDC credentials
+Fill in the following variables in .env:
+	•	**OIDC_SERVER_URL**
+	•	**OIDC_CLIENT_ID**
+	•	**OIDC_CLIENT_SECRET**
 
-3) Запусти:
+Also fill DB and Django paramaters
 
+These values are provided by your Nextcloud administrator.
+
+### 3) Start the development stack
 ```bash
 make up
 ```
 
-Открой: http://localhost:8000
+### 4) View service
+**Open in your browser: http://localhost:5007**
 
-## Callback URL (важно)
+## 🎯 Intended Use
 
-В `django-allauth` callback для OIDC-провайдера с `provider_id=nextcloud`:
+This project is intended for:
+- School IT departments
+- Educational institutions
+- Internal inventory and asset tracking
+- Environments with centralized authentication via Nextcloud
 
-```
-/accounts/oidc/nextcloud/login/callback/
-```
-
-## Сервер (Docker + Caddy)
-
-- Скопируй `.env` на сервер и выставь `DJANGO_DEBUG=0`, `DJANGO_ALLOWED_HOSTS`, `DJANGO_CSRF_TRUSTED_ORIGINS`, `APP_BASE_URL=https://...`
-- Запуск:
-
-```bash
-make server-up
-```
-
-Caddyfile лежит в `deploy/Caddyfile`.
+It is not designed as a public SaaS product but as a reliable internal tool.
