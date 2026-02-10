@@ -169,7 +169,7 @@
               </div>
               <div class="mt-2">
                 <a class="btn btn-outline-secondary btn-sm" href="{% url 'inventory:buildings' %}">
-                  Открыть «Корпуса»
+                  Добавление корпусов
                 </a>
               </div>
             </div>
@@ -188,7 +188,7 @@
               </div>
               <div class="mt-2">
                 <a class="btn btn-outline-secondary btn-sm" href="{% url 'inventory:rooms' %}">
-                  Открыть «Кабинеты»
+                  Добавление кабинетов
                 </a>
               </div>
             </div>
@@ -206,11 +206,10 @@
                 Добавьте модели принтеров, затем распределите принтеры по кабинетам (по желанию можно указать инвентарный номер).
               </div>
               <div class="mt-2 d-flex flex-wrap gap-2">
-                <a class="btn btn-outline-secondary btn-sm" href="{% url 'inventory:printer_models' %}">
-                  Модели принтеров
+                <a class="btn btn-outline-secondary btn-sm" href="{% url 'inventory:printer_models' %}">Модели принтеров
                 </a>
                 <a class="btn btn-outline-secondary btn-sm" href="{% url 'inventory:printers' %}">
-                  Принтеры
+                  Распределение принтеров по кабинетам
                 </a>
               </div>
             </div>
@@ -230,7 +229,7 @@
               </div>
               <div class="mt-2">
                 <a class="btn btn-outline-secondary btn-sm" href="{% url 'inventory:cartridge_models' %}">
-                  Открыть «Модели картриджей»
+                  Модели картриджей
                 </a>
               </div>
             </div>
@@ -248,27 +247,29 @@
                 Теперь можно вести учёт: <strong>приход</strong> (поступление на склад) и <strong>выдача</strong> (к конкретному принтеру).
                 Все операции автоматически попадут в журнал.
               </div>
-              <div class="mt-2 d-flex flex-wrap gap-2">
-                <a class="btn btn-outline-primary btn-sm" href="{% url 'inventory:stock_in' %}">
-                  + Приход
-                </a>
-                <a class="btn btn-outline-primary btn-sm" href="{% url 'inventory:stock_out' %}">
-                  – Выдача
-                </a>
-                <a class="btn btn-outline-secondary btn-sm" href="{% url 'inventory:journal' %}">
-                  Журнал
-                </a>
-              </div>
+        <div class="mt-2 d-flex flex-wrap gap-2">
+          <a class="btn btn-outline-primary btn-sm d-inline-flex align-items-center gap-1"
+             href="{% url 'inventory:stock_in' %}">
+            <i class="bi bi-box-arrow-in-down"></i>
+            <span>Приход</span>
+          </a>
+
+          <a class="btn btn-outline-primary btn-sm d-inline-flex align-items-center gap-1"
+             href="{% url 'inventory:stock_out' %}">
+            <i class="bi bi-box-arrow-up-right"></i>
+            <span>Выдача</span>
+          </a>
+
+          <a class="btn btn-outline-secondary btn-sm d-inline-flex align-items-center gap-1"
+             href="{% url 'inventory:journal' %}">
+            <i class="bi bi-journal-text"></i>
+            <span>Журнал</span>
+          </a>
+        </div>
             </div>
           </div>
         </div>
 
-        {# === Кнопка перехода === #}
-        <div class="mt-4 d-flex flex-column flex-sm-row gap-2">
-          <a class="btn btn-primary text-center" href="{% url 'inventory:dashboard' %}">
-            Перейти к учёту
-          </a>
-        </div>
 
       </div>
     </div>

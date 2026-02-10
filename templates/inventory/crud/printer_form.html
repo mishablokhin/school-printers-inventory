@@ -31,4 +31,22 @@
   </div>
 </div>
 
+<script>
+  document.addEventListener("DOMContentLoaded", () => {
+    const building = document.querySelector('select[name="building"]');
+    if (!building) return;
+
+    building.addEventListener("change", () => {
+      const url = new URL(window.location.href);
+
+      if (building.value) url.searchParams.set("building", building.value);
+      else url.searchParams.delete("building");
+
+      // сбросить зависимые поля
+      url.searchParams.delete("room");
+
+      window.location.href = url.toString();
+    });
+  });
+</script>
 {% endblock %}

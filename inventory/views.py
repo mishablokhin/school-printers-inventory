@@ -6,6 +6,11 @@ from django.db import transaction
 from django.views.generic import ListView, CreateView, UpdateView, DeleteView, TemplateView
 from django.core.exceptions import ValidationError
 
+from django.db import connection
+from django.db.models import IntegerField, Value
+from django.db.models.functions import Cast, Coalesce, NullIf
+from django.db.models import Func
+
 from .forms import (
     BuildingForm, RoomForm, PrinterModelForm, CartridgeModelForm, PrinterForm,
     StockInForm, StockOutForm
@@ -26,10 +31,59 @@ class DashboardView(LoginRequiredMixin, TemplateView):
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
-        cartridges = CartridgeModel.objects.prefetch_related("compatible_printers").order_by("vendor", "code")
+
+        q = (self.request.GET.get("q") or "").strip()
+
+        cartridges = (
+            CartridgeModel.objects
+            .prefetch_related("compatible_printers")
+            .order_by("vendor", "code")
+        )
+
+        # Поиск:
+        # - по картриджу: vendor/code/title
+        # - по принтеру (совместимости): compatible_printers.vendor/model
+        if q:
+            cartridges = (
+                cartridges
+                .filter(
+                    Q(vendor__icontains=q) |
+                    Q(code__icontains=q) |
+                    Q(title__icontains=q) |
+                    Q(compatible_printers__vendor__icontains=q) |
+                    Q(compatible_printers__model__icontains=q)
+                )
+                .distinct()
+            )
+
         stock_map = {s.cartridge_id: s.qty for s in GlobalStock.objects.all()}
-        buildings = Building.objects.order_by("name")
-        ctx.update({"cartridges": cartridges, "stock_map": stock_map, "buildings": buildings})
+        buildings = list(Building.objects.order_by("name"))
+
+        # (cartridge_id, building_id) -> qty
+        bs_pairs = {
+            (s.cartridge_id, s.building_id): s.qty
+            for s in BuildingStock.objects.all()
+        }
+
+        # cartridge_id -> [{id, name, qty}, ...] (по всем корпусам, даже если 0)
+        building_stock_rows = {}
+        for c in cartridges:
+            rows = []
+            for b in buildings:
+                rows.append({
+                    "id": b.id,
+                    "name": b.name,
+                    "qty": bs_pairs.get((c.id, b.id), 0),
+                })
+            building_stock_rows[c.id] = rows
+
+        ctx.update({
+            "q": q,
+            "cartridges": cartridges,
+            "stock_map": stock_map,
+            "buildings": buildings,
+            "building_stock_rows": building_stock_rows,
+        })
         return ctx
 
 
@@ -428,11 +482,47 @@ class PrinterList(LoginRequiredMixin, ListView):
         qs = (
             Printer.objects
             .select_related("room", "room__building", "printer_model")
-            .order_by("room__building__name", "room__number", "printer_model__vendor", "printer_model__model")
         )
+
         building_id = (self.request.GET.get("building") or "").strip()
         if building_id:
             qs = qs.filter(room__building_id=building_id)
+
+        # Нормальная сортировка кабинетов: корпус -> номер кабинета (числом) -> строкой
+        # Реализуем "натуральную" сортировку для PostgreSQL.
+        if connection.vendor == "postgresql":
+            # Вытаскиваем только цифры из room.number: "2-14" -> "214", "101" -> "101"
+            digits_only = Func(
+                "room__number",
+                Value(r"[^0-9]"),
+                Value(""),
+                Value("g"),
+                function="regexp_replace",
+            )
+
+            qs = qs.annotate(
+                room_num_int=Coalesce(
+                    Cast(NullIf(digits_only, Value("")), IntegerField()),
+                    Value(0),
+                )
+            ).order_by(
+                "room__building__name",
+                "room_num_int",
+                "room__number",
+                "printer_model__vendor",
+                "printer_model__model",
+                "inventory_tag",
+            )
+        else:
+            # Фолбэк: без извлечения чисел (для SQLite/MySQL).
+            qs = qs.order_by(
+                "room__building__name",
+                "room__number",
+                "printer_model__vendor",
+                "printer_model__model",
+                "inventory_tag",
+            )
+
         return qs
 
     def get_context_data(self, **kwargs):
@@ -445,24 +535,44 @@ class PrinterList(LoginRequiredMixin, ListView):
 class PrinterCreate(LoginRequiredMixin, CreateView):
     model = Printer
     form_class = PrinterForm
-    template_name = "inventory/crud/form.html"
+    template_name = "inventory/crud/printer_form.html"
     success_url = reverse_lazy("inventory:printers")
+
+    def get_form_kwargs(self):
+        kwargs = super().get_form_kwargs()
+        building_id = (self.request.GET.get("building") or "").strip()
+        kwargs["building_id"] = building_id or None
+        return kwargs
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
         ctx["title"] = "Добавить принтер"
+
+        building_id = (self.request.GET.get("building") or "").strip()
+        ctx["selected_building_id"] = building_id
         return ctx
 
 
 class PrinterUpdate(LoginRequiredMixin, UpdateView):
     model = Printer
     form_class = PrinterForm
-    template_name = "inventory/crud/form.html"
+    template_name = "inventory/crud/printer_form.html"
     success_url = reverse_lazy("inventory:printers")
+
+    def get_form_kwargs(self):
+        kwargs = super().get_form_kwargs()
+        building_id = (self.request.GET.get("building") or "").strip()
+        # если в URL не передали building — оставляем None,
+        # форма сама подставит initial из instance.room.building
+        kwargs["building_id"] = building_id or None
+        return kwargs
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
         ctx["title"] = "Редактировать принтер"
+
+        building_id = (self.request.GET.get("building") or "").strip()
+        ctx["selected_building_id"] = building_id
         return ctx
 
 
