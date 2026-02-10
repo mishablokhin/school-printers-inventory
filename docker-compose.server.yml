@@ -1,7 +1,0 @@
-services:
-  web:
-    environment:
-      DJANGO_DEBUG: "0"
-    restart: unless-stopped
-  db:
-    restart: unless-stopped

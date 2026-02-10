@@ -108,7 +108,6 @@ class StockInForm(forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.fields["building"].required = False
 
 
 class StockOutForm(forms.ModelForm):

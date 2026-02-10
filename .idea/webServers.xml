@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="WebServers">
+    <option name="servers">
+      <webServer id="b66d7ff9-83df-4786-b33f-6645fe4ea11d" name="Apps and NextCloud Relay">
+        <fileTransfer accessType="SFTP" host="5.129.198.19" port="22" sshConfigId="7a3f1903-8371-4f4a-90fa-5aaca3e5ab41" sshConfig="root@5.129.198.19:22 password">
+          <advancedOptions>
+            <advancedOptions dataProtectionLevel="Private" passiveMode="true" shareSSLContext="true" />
+          </advancedOptions>
+        </fileTransfer>
+      </webServer>
+    </option>
+  </component>
+</project>

@@ -38,7 +38,7 @@ collectstatic:
 	docker compose -f docker-compose.yml -f docker-compose.dev.yml exec web python manage.py collectstatic --noinput
 
 server-up:
-	docker compose -f docker-compose.yml -f docker-compose.server.yml up -d --build
+	docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
 
 server-down:
-	docker compose -f docker-compose.yml -f docker-compose.server.yml down
+	docker compose -f docker-compose.yml -f docker-compose.prod.yml down
