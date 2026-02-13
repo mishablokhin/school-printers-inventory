@@ -84,6 +84,22 @@
   }
   .tx-label { color: rgba(0,0,0,.55); }
 
+  /* пилюля "поступило в" */
+  .tx-pill-in{
+    background: rgba(25,135,84,.08);
+    border: 1px solid rgba(25,135,84,.18);
+    color: rgba(25,135,84,.95);
+  }
+  .tx-pill-in .tx-label { color: rgba(25,135,84,.75); }
+
+  /* пилюля "выдача со склада" */
+  .tx-pill-out{
+    background: rgba(13,110,253,.10);
+    border: 1px solid rgba(13,110,253,.22);
+    color: rgba(13,110,253,.95);
+  }
+  .tx-pill-out .tx-label { color: rgba(13,110,253,.75); }
+
   /* шапка строки */
   .tx-top{
     display:flex;
@@ -156,10 +172,9 @@
   }
 
   .form-control::placeholder {
-  font-size: 0.85rem;
-  color: rgba(0,0,0,.45);
-}
-
+    font-size: 0.85rem;
+    color: rgba(0,0,0,.45);
+  }
 </style>
 
 <div class="card shadow-sm">
@@ -208,7 +223,7 @@
           </div>
         </div>
 
-        {# ===== Картридж (в одну компактную строку) ===== #}
+        {# ===== Картридж ===== #}
         <div class="tx-item">
           <span class="tx-main">{{ tx.cartridge.vendor }} {{ tx.cartridge.code }}</span>
           {% if tx.cartridge.title %}
@@ -217,32 +232,40 @@
           {% endif %}
         </div>
 
-        {# ===== Пилюли (компактно) ===== #}
+        {# ===== Пилюли ===== #}
         <div class="mt-2 tx-meta">
 
-            {% if tx.building and tx.building.id != tx.printer.room.building.id %}
+          {# === ПРИХОД: "Поступило в корпус" === #}
+          {% if tx.tx_type == "IN" %}
+            <div class="tx-pill tx-pill-in">
+              <i class="bi bi-arrow-down-circle"></i>
+              <span class="tx-label">Поступило в</span>
+              <span class="fw-semibold">{% if tx.building %}{{ tx.building.name }}{% else %}—{% endif %}</span>
+            </div>
+
+          {# === ВЫДАЧА === #}
+          {% else %}
+
+            {# Всегда показываем, откуда выдали (склад) #}
+            <div class="tx-pill tx-pill-out">
+              <i class="bi bi-arrow-up-circle"></i>
+              <span class="tx-label">Со склада</span>
+              <span class="fw-semibold">{% if tx.building %}{{ tx.building.name }}{% else %}—{% endif %}</span>
+            </div>
+
+            {# Корпус назначения (по принтеру) #}
+            {% if tx.printer and tx.printer.room and tx.printer.room.building %}
               <div class="tx-pill">
-                <i class="bi bi-box-seam text-muted"></i>
-                <span class="tx-label">Со склада:</span>
-                <span class="fw-semibold">{{ tx.building.name }}</span>
+                <i class="bi bi-buildings"></i>
+                <span class="fw-semibold">{{ tx.printer.room.building.name }}</span>
+              </div>
+            {% else %}
+              <div class="tx-pill">
+                <i class="bi bi-buildings"></i>
+                <span class="fw-semibold">{% if tx.building %}{{ tx.building.name }}{% else %}—{% endif %}</span>
               </div>
             {% endif %}
-            {# Корпус назначения для выдачи + отдельная пометка склада, если отличается #}
-          {% if tx.tx_type != "IN" and tx.printer and tx.printer.room and tx.printer.room.building %}
-            <div class="tx-pill">
-              <i class="bi bi-buildings"></i>
-              <span class="fw-semibold">{{ tx.printer.room.building.name }}</span>
-            </div>
-          {% else %}
-            <div class="tx-pill">
-              <i class="bi bi-buildings"></i>
-              <span class="fw-semibold">
-                {% if tx.building %}{{ tx.building.name }}{% else %}—{% endif %}
-              </span>
-            </div>
-          {% endif %}
 
-          {% if tx.tx_type != "IN" %}
             <div class="tx-pill">
               <i class="bi bi-door-closed"></i>
               <span class="fw-semibold">
@@ -270,10 +293,11 @@
                 {% if tx.issued_to %}{{ tx.issued_to }}{% else %}—{% endif %}
               </span>
             </div>
+
           {% endif %}
         </div>
 
-        {# ===== Комментарий (компактно) ===== #}
+        {# ===== Комментарий ===== #}
         {% if tx.comment %}
           <div class="tx-comment">
             <div class="text-muted small mb-1">Комментарий:</div>
