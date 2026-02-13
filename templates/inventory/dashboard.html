@@ -186,10 +186,12 @@
             {% if buildings %}
               <div class="mt-2 d-flex flex-wrap justify-content-end gap-2">
                 {% for bs in building_stock_rows|get_item:c.id %}
-                  <span class="inv-pill inv-pill-building">
-                    <span class="inv-muted me-1">{{ bs.name }}:</span>
-                    <span class="fw-semibold">{{ bs.qty }} шт.</span>
-                  </span>
+                  {% if bs.qty|default:0 > 0 %}
+                    <span class="inv-pill inv-pill-building">
+                      <span class="inv-muted me-1">{{ bs.name }}:</span>
+                      <span class="fw-semibold">{{ bs.qty }} шт.</span>
+                    </span>
+                  {% endif %}
                 {% endfor %}
               </div>
             {% endif %}
