@@ -1,8 +1,8 @@
 {% extends "base.html" %}
-{% block title %}Учёт картриджей{% endblock %}
+{% block title %}Главная - Учёт картриджей{% endblock %}
 
 {% block content %}
-<style>
+<style xmlns="http://www.w3.org/1999/html">
   .help-step {
     display: flex;
     gap: .9rem;
@@ -102,9 +102,9 @@
     <div class="d-flex align-items-start gap-3">
       <div class="welcome-ico">
         {% if greeting_time == "morning" %}
-          <i class="bi bi-sun-fill text-warning"></i>
+          <i class="bi bi-sunrise-fill text-warning"></i>
         {% elif greeting_time == "day" %}
-          <i class="bi bi-building text-primary"></i>
+          <i class="bi bi-brightness-high-fill" style="color:#ff8102;"></i>
         {% elif greeting_time == "evening" %}
           <i class="bi bi-moon-stars-fill" style="color:#6f42c1;"></i>
         {% else %}
@@ -209,7 +209,7 @@
                 <a class="btn btn-outline-secondary btn-sm" href="{% url 'inventory:printer_models' %}">Модели принтеров
                 </a>
                 <a class="btn btn-outline-secondary btn-sm" href="{% url 'inventory:printers' %}">
-                  Распределение принтеров по кабинетам
+                  Распределение по кабинетам
                 </a>
               </div>
             </div>
@@ -245,7 +245,7 @@
               <div class="help-title">Шаг 5 – Учёт движений</div>
               <div class="help-text">
                 Теперь можно вести учёт: <strong>приход</strong> (поступление на склад) и <strong>выдача</strong> (к конкретному принтеру).
-                Все операции автоматически попадут в журнал.
+                  Все операции автоматически попадут в <strong>журнал</strong>.
               </div>
         <div class="mt-2 d-flex flex-wrap gap-2">
           <a class="btn btn-outline-primary btn-sm d-inline-flex align-items-center gap-1"

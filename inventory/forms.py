@@ -162,14 +162,21 @@ class StockInForm(forms.ModelForm):
         widgets = {
             "cartridge": forms.Select(attrs={"class": "form-select"}),
             "qty": forms.NumberInput(attrs={"class": "form-control", "min": 1}),
-            "building": forms.Select(attrs={"class": "form-select"}),
+            "building": forms.Select(attrs={"class": "form-select", "required": True}),
             "comment": forms.Textarea(attrs={"class": "form-control", "rows": 2}),
         }
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+
         self.fields["cartridge"].queryset = CartridgeModel.objects.order_by("vendor", "code")
         self.fields["building"].queryset = Building.objects.order_by("name")
+
+        self.fields["building"].required = True
+        self.fields["building"].empty_label = "— выберите корпус —"
+        self.fields["building"].error_messages = {
+            "required": "Выберите корпус, в который поступили картриджи."
+        }
 
 
 class StockOutForm(forms.ModelForm):
