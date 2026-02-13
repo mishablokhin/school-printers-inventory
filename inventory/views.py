@@ -207,6 +207,7 @@ class StockOutCreateView(LoginRequiredMixin, CreateView):
         if cartridge_id and cartridge_qs is not None:
             selected_cartridge = cartridge_qs.filter(pk=cartridge_id).first()
 
+        # Остаток в выбранном корпусе (куда выдаём)
         if selected_building and selected_cartridge:
             building_qty = (
                 BuildingStock.objects
@@ -217,6 +218,7 @@ class StockOutCreateView(LoginRequiredMixin, CreateView):
             building_qty = 0 if building_qty is None else building_qty
             can_issue = building_qty > 0
 
+        # Общий остаток
         if selected_cartridge:
             global_qty = (
                 GlobalStock.objects
@@ -225,6 +227,38 @@ class StockOutCreateView(LoginRequiredMixin, CreateView):
                 .first()
             )
             global_qty = 0 if global_qty is None else global_qty
+
+        # NEW: альтернативные корпуса-источники, где есть картриджи > 0
+        available_source_buildings = []
+        if selected_cartridge:
+            source_rows = (
+                BuildingStock.objects
+                .select_related("building")
+                .filter(cartridge=selected_cartridge, qty__gt=0)
+                .order_by("building__name")
+            )
+            for row in source_rows:
+                if selected_building and row.building_id == selected_building.id:
+                    continue
+                available_source_buildings.append({
+                    "id": row.building_id,
+                    "name": row.building.name,
+                    "qty": row.qty,
+                })
+
+        # NEW: можно оформить выдачу, если:
+        # - есть в выбранном корпусе
+        # - или есть альтернативные корпуса-источники
+        if building_qty is not None:
+            can_issue = (building_qty > 0) or bool(available_source_buildings)
+
+        # NEW: ограничим выпадающий список source_building только доступными складами
+        if form and "source_building" in form.fields:
+            ids = [x["id"] for x in available_source_buildings]
+            form.fields["source_building"].queryset = Building.objects.filter(id__in=ids).order_by("name")
+            # Можно проставить дефолт (первый доступный)
+            if ids and not form.initial.get("source_building"):
+                form.initial["source_building"] = ids[0]
 
         ctx.update(
             {
@@ -236,6 +270,7 @@ class StockOutCreateView(LoginRequiredMixin, CreateView):
                 "building_qty": building_qty,
                 "global_qty": global_qty,
                 "can_issue": can_issue,
+                "available_source_buildings": available_source_buildings,
             }
         )
         return ctx
@@ -245,15 +280,23 @@ class StockOutCreateView(LoginRequiredMixin, CreateView):
         tx.created_by = self.request.user
         tx.tx_type = StockTransaction.Type.OUT
 
-        # building + issued_to автоматически
-        tx.building = tx.printer.room.building if tx.printer else None
+        # куда выдаём (назначение) – берём из принтера
+        destination_building = tx.printer.room.building if tx.printer else None
+
+        # NEW: откуда списываем (если выбрали)
+        source_building = form.cleaned_data.get("source_building")
+
+        # списание выполняем с source_building, если он выбран, иначе со “своего” корпуса назначения
+        tx.building = source_building or destination_building
+
+        # кому выдали
         tx.issued_to = (
             tx.printer.room.owner_name
             if (tx.printer and tx.printer.room and tx.printer.room.owner_name)
             else ""
         )
 
-        # Проверка на сервере формы
+        # Проверка на сервере формы: остаток должен быть в КОРПУСЕ-ИСТОЧНИКЕ
         if tx.building_id and tx.cartridge_id:
             bqty = (
                 BuildingStock.objects
@@ -262,12 +305,12 @@ class StockOutCreateView(LoginRequiredMixin, CreateView):
                 .first()
             ) or 0
             if bqty <= 0:
-                form.add_error(None, "Недостаточно картриджей в выбранном корпусе.")
+                form.add_error(None, "Недостаточно картриджей в выбранном корпусе-складе.")
                 return self.form_invalid(form)
 
         try:
             with transaction.atomic():
-                tx.full_clean()   # совместимость/qty/printer и т.п.
+                tx.full_clean()
                 tx.save()
                 apply_transaction(tx)
         except ValidationError as e:
