@@ -98,7 +98,8 @@
 {% with extra=sa.extra_data %}
 {% with user_pic=extra.userinfo.picture|default:extra.id_token.picture %}
 <div class="welcome-box mb-3">
-  <div class="d-flex align-items-start justify-content-between gap-3 flex-wrap">
+  <div class="d-flex flex-column gap-3">
+
     <div class="d-flex align-items-start gap-3">
       <div class="welcome-ico">
         {% if greeting_time == "morning" %}
@@ -122,7 +123,7 @@
       </div>
     </div>
 
-    <div class="ms-auto">
+    <div class="d-flex justify-content-center">
       <div class="nc-chip">
         {% if user_pic %}
           <img src="{{ user_pic }}" alt="" class="nc-ava">
@@ -132,12 +133,13 @@
           </span>
         {% endif %}
 
-        <div class="d-flex flex-column lh-sm">
+        <div class="d-flex flex-column lh-sm text-center">
           <small class="text-muted">Профиль NextCloud</small>
           <span class="fw-semibold" style="font-size:.95rem;">{{ request.user.username }}</span>
         </div>
       </div>
     </div>
+
   </div>
 </div>
 {% endwith %}

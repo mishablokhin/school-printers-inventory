@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load inventory_extras %}
 {% block title %}Журнал движений - Учёт картриджей{% endblock %}
 
 {% block content %}
@@ -22,7 +23,7 @@
   <div class="d-flex flex-wrap gap-2">
     <a class="btn btn-outline-secondary btn-m d-inline-flex align-items-center gap-1"
        href="{% url 'inventory:dashboard' %}">
-      <i class="bi bi-boxes"></i>
+      <i class="bi bi-box-seam-fill"></i>
       <span>Остатки</span>
     </a>
 
@@ -34,7 +35,7 @@
 
     <a class="btn btn-secondary btn-m d-inline-flex align-items-center gap-1"
        href="{% url 'inventory:stock_out' %}">
-      <i class="bi bi-box-arrow-up-right"></i>
+      <i class="bi bi-box-arrow-up"></i>
       <span>Выдача</span>
     </a>
   </div>
@@ -153,6 +154,12 @@
     border-radius: .75rem;
     padding: .5rem .75rem;
   }
+
+  .form-control::placeholder {
+  font-size: 0.85rem;
+  color: rgba(0,0,0,.45);
+}
+
 </style>
 
 <div class="card shadow-sm">
@@ -169,22 +176,28 @@
         <div class="tx-top">
           <div class="tx-left">
             {% if tx.tx_type == "IN" %}
-              <span class="badge text-bg-success">Приход</span>
+              <span class="badge text-bg-success d-inline-flex align-items-center gap-1">
+                <i class="bi bi-box-arrow-in-down"></i>
+                <span>Приход</span>
+              </span>
             {% else %}
-              <span class="badge text-bg-primary">Выдача</span>
+              <span class="badge text-bg-primary d-inline-flex align-items-center gap-1">
+                <i class="bi bi-box-arrow-up"></i>
+                <span>Выдача</span>
+              </span>
             {% endif %}
 
             <span class="tx-date">{{ tx.created_at|date:"d.m.Y H:i" }}</span>
 
             <span class="tx-pill">
-              <span class="tx-label">Кол-во:</span>
-              <span class="fw-semibold">{{ tx.qty }}</span>
+              <span class="tx-label">Количество:</span>
+              <span class="fw-semibold">{{ tx.qty }} шт.</span>
             </span>
           </div>
 
           <div class="user-box">
             <div class="user-line">
-              <span class="fw-semibold text-nowrap user-name">{{ user_name }}</span>
+              <span class="fw-semibold text-nowrap user-name">{{ user_name|short_fio }}</span>
               {% if user_pic %}
                 <img src="{{ user_pic }}" alt="" class="user-avatar">
               {% else %}
@@ -207,13 +220,6 @@
         {# ===== Пилюли (компактно) ===== #}
         <div class="mt-2 tx-meta">
 
-          {# Корпус назначения для выдачи + отдельная пометка склада, если отличается #}
-          {% if tx.tx_type != "IN" and tx.printer and tx.printer.room and tx.printer.room.building %}
-            <div class="tx-pill">
-              <span class="tx-label">Корпус:</span>
-              <span class="fw-semibold">{{ tx.printer.room.building.name }}</span>
-            </div>
-
             {% if tx.building and tx.building.id != tx.printer.room.building.id %}
               <div class="tx-pill">
                 <i class="bi bi-box-seam text-muted"></i>
@@ -221,9 +227,15 @@
                 <span class="fw-semibold">{{ tx.building.name }}</span>
               </div>
             {% endif %}
+            {# Корпус назначения для выдачи + отдельная пометка склада, если отличается #}
+          {% if tx.tx_type != "IN" and tx.printer and tx.printer.room and tx.printer.room.building %}
+            <div class="tx-pill">
+              <i class="bi bi-buildings"></i>
+              <span class="fw-semibold">{{ tx.printer.room.building.name }}</span>
+            </div>
           {% else %}
             <div class="tx-pill">
-              <span class="tx-label">Корпус:</span>
+              <i class="bi bi-buildings"></i>
               <span class="fw-semibold">
                 {% if tx.building %}{{ tx.building.name }}{% else %}—{% endif %}
               </span>
@@ -232,14 +244,14 @@
 
           {% if tx.tx_type != "IN" %}
             <div class="tx-pill">
-              <span class="tx-label">Каб.:</span>
+              <i class="bi bi-door-closed"></i>
               <span class="fw-semibold">
                 {% if tx.printer and tx.printer.room %}{{ tx.printer.room.number }}{% else %}—{% endif %}
               </span>
             </div>
 
             <div class="tx-pill">
-              <span class="tx-label">Принтер:</span>
+              <i class="bi bi-printer"></i>
               <span class="fw-semibold">
                 {% if tx.printer %}
                   {{ tx.printer.printer_model.vendor }} {{ tx.printer.printer_model.model }}
@@ -253,7 +265,7 @@
             </div>
 
             <div class="tx-pill">
-              <span class="tx-label">Кому:</span>
+              <i class="bi bi-person"></i>
               <span class="fw-semibold">
                 {% if tx.issued_to %}{{ tx.issued_to }}{% else %}—{% endif %}
               </span>
