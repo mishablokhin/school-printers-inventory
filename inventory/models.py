@@ -5,7 +5,7 @@ from django.db.models import UniqueConstraint
 
 
 class Building(models.Model):
-    name = models.CharField(max_length=120, unique=True)  # «Корпус 1», «ШО-1», и т. п.
+    name = models.CharField(max_length=120, unique=True)
     address = models.CharField(max_length=255, blank=True)
 
     def __str__(self):
@@ -14,8 +14,8 @@ class Building(models.Model):
 
 class Room(models.Model):
     building = models.ForeignKey(Building, on_delete=models.CASCADE, related_name="rooms")
-    number = models.CharField(max_length=30)  # «101», «2-14», «кабинет информатики»
-    owner_name = models.CharField(max_length=255, blank=True)  # ФИО ответственного (можно текстом)
+    number = models.CharField(max_length=30)
+    owner_name = models.CharField(max_length=255, blank=True)
     owner_email = models.EmailField(blank=True)
 
     class Meta:
@@ -28,8 +28,8 @@ class Room(models.Model):
 
 
 class PrinterModel(models.Model):
-    vendor = models.CharField(max_length=80)   # HP, Canon…
-    model = models.CharField(max_length=120)  # M428fdw…
+    vendor = models.CharField(max_length=80)
+    model = models.CharField(max_length=120)
 
     class Meta:
         constraints = [
@@ -41,10 +41,9 @@ class PrinterModel(models.Model):
 
 
 class CartridgeModel(models.Model):
-    vendor = models.CharField(max_length=80)   # HP, Canon…
-    code = models.CharField(max_length=120)    # CE285A, CF259X…
-    title = models.CharField(max_length=255, blank=True)  # описание
-    # совместимость задаём через M2M
+    vendor = models.CharField(max_length=80)
+    code = models.CharField(max_length=120)
+    title = models.CharField(max_length=255, blank=True)
     compatible_printers = models.ManyToManyField(
         PrinterModel,
         related_name="compatible_cartridges",
@@ -63,7 +62,7 @@ class CartridgeModel(models.Model):
 class Printer(models.Model):
     room = models.ForeignKey(Room, on_delete=models.PROTECT, related_name="printers")
     printer_model = models.ForeignKey(PrinterModel, on_delete=models.PROTECT, related_name="printers")
-    inventory_tag = models.CharField(max_length=80, blank=True)  # инв. номер/метка
+    inventory_tag = models.CharField(max_length=80, blank=True)
     note = models.TextField(blank=True)
 
     def __str__(self):
@@ -71,26 +70,41 @@ class Printer(models.Model):
         return f"{self.printer_model}{inv} – {self.room}"
 
 
+# ✅ Теперь глобальный остаток хранится раздельно: на балансе / не на балансе
 class GlobalStock(models.Model):
-    cartridge = models.OneToOneField(CartridgeModel, on_delete=models.CASCADE, related_name="global_stock")
-    qty = models.PositiveIntegerField(default=0)
-
-    def __str__(self):
-        return f"{self.cartridge}: {self.qty}"
-
-
-class BuildingStock(models.Model):
-    building = models.ForeignKey(Building, on_delete=models.CASCADE, related_name="stocks")
-    cartridge = models.ForeignKey(CartridgeModel, on_delete=models.CASCADE, related_name="building_stocks")
+    cartridge = models.ForeignKey(
+        CartridgeModel,
+        on_delete=models.CASCADE,
+        related_name="global_stocks",
+    )
+    on_balance = models.BooleanField(default=False)
     qty = models.PositiveIntegerField(default=0)
 
     class Meta:
         constraints = [
-            UniqueConstraint(fields=["building", "cartridge"], name="uniq_building_stock")
+            UniqueConstraint(fields=["cartridge", "on_balance"], name="uniq_global_stock_cartridge_balance")
         ]
 
     def __str__(self):
-        return f"{self.building} – {self.cartridge}: {self.qty}"
+        flag = " (на балансе)" if self.on_balance else ""
+        return f"{self.cartridge}{flag}: {self.qty}"
+
+
+# ✅ Теперь склад по корпусу тоже раздельно по балансу
+class BuildingStock(models.Model):
+    building = models.ForeignKey(Building, on_delete=models.CASCADE, related_name="stocks")
+    cartridge = models.ForeignKey(CartridgeModel, on_delete=models.CASCADE, related_name="building_stocks")
+    on_balance = models.BooleanField(default=False)
+    qty = models.PositiveIntegerField(default=0)
+
+    class Meta:
+        constraints = [
+            UniqueConstraint(fields=["building", "cartridge", "on_balance"], name="uniq_building_stock_balance")
+        ]
+
+    def __str__(self):
+        flag = " (на балансе)" if self.on_balance else ""
+        return f"{self.building} – {self.cartridge}{flag}: {self.qty}"
 
 
 class StockTransaction(models.Model):
@@ -102,22 +116,17 @@ class StockTransaction(models.Model):
     created_by = models.ForeignKey(
         settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="stock_transactions"
     )
-    on_balance = models.BooleanField(
-        default=False,
-        verbose_name="Постановка на баланс",
-        help_text="Отметьте, если эти картриджи поступают на баланс школы",
-    )
 
     tx_type = models.CharField(max_length=3, choices=Type.choices)
     cartridge = models.ForeignKey(CartridgeModel, on_delete=models.PROTECT, related_name="transactions")
     qty = models.PositiveIntegerField()
 
-    # Куда относится движение (для статистики по корпусам)
-    building = models.ForeignKey(Building, on_delete=models.PROTECT, null=True, blank=True)
+    # ✅ Новый флаг: эта партия на балансе школы
+    on_balance = models.BooleanField(default=False)
 
-    # Для выдачи - конкретный принтер/кабинет
+    building = models.ForeignKey(Building, on_delete=models.PROTECT, null=True, blank=True)
     printer = models.ForeignKey(Printer, on_delete=models.PROTECT, null=True, blank=True)
-    issued_to = models.CharField(max_length=255, blank=True)  # кому выдали (ФИО)
+    issued_to = models.CharField(max_length=255, blank=True)
     comment = models.TextField(blank=True)
 
     def clean(self):
@@ -127,10 +136,6 @@ class StockTransaction(models.Model):
         if self.tx_type == self.Type.OUT:
             if not self.printer:
                 raise ValidationError("Для выдачи нужно указать принтер.")
-            # Оставить для статистики
-        if self.tx_type == self.Type.IN:
-            # Приход только если указан корпус
-            pass
 
         # Проверка совместимости
         if self.printer and self.cartridge:
@@ -139,4 +144,5 @@ class StockTransaction(models.Model):
                 raise ValidationError("Этот картридж не подходит к выбранному принтеру.")
 
     def __str__(self):
-        return f"{self.get_tx_type_display()} – {self.cartridge} × {self.qty}"
+        flag = " (на балансе)" if self.on_balance else ""
+        return f"{self.get_tx_type_display()} – {self.cartridge}{flag} × {self.qty}"

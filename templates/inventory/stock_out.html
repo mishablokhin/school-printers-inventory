@@ -162,7 +162,7 @@
                   {% for p in printers_in_room %}
                     <div class="tag mb-1">
                       <i class="bi bi-printer"></i>
-                      <span>{{ p.printer_model.vendor }} {{ p.printer_model.model }}</span>
+                      <span><strong>{{ p.printer_model.vendor }} {{ p.printer_model.model }}</strong></span>
                       {% if p.inventory_tag %}
                         <span class="text-muted">·</span><span class="text-muted">{{ p.inventory_tag }}</span>
                       {% endif %}
@@ -193,9 +193,9 @@
 
         <div class="col-12 col-md-6">
           <label class="form-label">Картридж к выдаче</label>
-          {{ form.cartridge }}
+          {{ form.cartridge_variant }}
           <div class="form-text text-muted" id="hint-cartridge" style="display:none;">
-            Сначала выберите принтер - отобразятся только совместимые модели
+            Сначала выберите принтер – отобразятся только совместимые модели
           </div>
         </div>
 
@@ -315,12 +315,12 @@
 </div>
 
 <script>
-  // building -> room -> printer (+ cartridge)
+  // building -> room -> printer (+ cartridge_variant)
   document.addEventListener("DOMContentLoaded", () => {
     const building = document.querySelector('select[name="building"]');
     const room = document.querySelector('select[name="room"]');
     const printer = document.querySelector('select[name="printer"]');
-    const cartridge = document.querySelector('select[name="cartridge"]');
+    const cartridge = document.querySelector('select[name="cartridge_variant"]');
 
     const hintRoom = document.getElementById("hint-room");
     const hintPrinter = document.getElementById("hint-printer");
@@ -346,14 +346,14 @@
       if (params.reset === "room") {
         url.searchParams.delete("room");
         url.searchParams.delete("printer");
-        url.searchParams.delete("cartridge");
+        url.searchParams.delete("cartridge_variant");
       }
       if (params.reset === "printer") {
         url.searchParams.delete("printer");
-        url.searchParams.delete("cartridge");
+        url.searchParams.delete("cartridge_variant");
       }
       if (params.reset === "cartridge") {
-        url.searchParams.delete("cartridge");
+        url.searchParams.delete("cartridge_variant");
       }
 
       Object.entries(params.set || {}).forEach(([k, v]) => {
@@ -405,20 +405,18 @@
             building: building ? building.value : "",
             room: room ? room.value : "",
             printer: printer ? printer.value : "",
-            cartridge: cartridge.value
+            cartridge_variant: cartridge.value
           }
         });
       });
     }
 
     const url = new URL(window.location.href);
-    const cartridgeFromUrl = url.searchParams.get("cartridge");
+    const fromUrl = url.searchParams.get("cartridge_variant");
 
-    if (cartridge && cartridgeFromUrl) {
-      const hasOption = Array.from(cartridge.options).some(o => o.value === cartridgeFromUrl);
-      if (hasOption) {
-        cartridge.value = cartridgeFromUrl;
-      }
+    if (cartridge && fromUrl) {
+      const hasOption = Array.from(cartridge.options).some(o => o.value === fromUrl);
+      if (hasOption) cartridge.value = fromUrl;
     }
   });
 </script>

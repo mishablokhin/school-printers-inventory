@@ -43,7 +43,6 @@
 
 </div>
 
-{# ===== Поиск (без карточки, на всю ширину) ===== #}
 <form method="get" class="mb-4">
   <div class="input-group">
     <span class="input-group-text bg-white">
@@ -71,8 +70,6 @@
       <i class="bi bi-arrow-right"></i>
     </button>
   </div>
-
-
 </form>
 
 {% if buildings %}
@@ -116,48 +113,212 @@
   .inv-pill {
     display:inline-flex;
     align-items:center;
+    gap: .35rem;
     padding:.28rem .6rem;
     border-radius:999px;
     background: rgba(0,0,0,.04);
-  }
-
-  .inv-pill-mini {
-    padding: .18rem .5rem;
-    font-size: .78rem;
-  }
-
-  /* чуть крупнее пилюли по корпусам */
-  .inv-pill-building {
-    padding: .38rem .75rem;
-    font-size: .9rem;
+    white-space: nowrap;
+    font-size: .85rem;  /* ✅ меньше текст совместимости */
     line-height: 1.1;
   }
 
   .inv-muted { color: rgba(0,0,0,.55); }
 
+  .inv-top{
+    display:flex;
+    align-items:flex-start;
+    justify-content:space-between;
+    gap: 1rem;
+  }
+
   .inv-stock {
-    min-width: 96px;
     text-align: right;
     font-variant-numeric: tabular-nums;
+    flex: 0 0 auto;
+  }
+
+  /* ✅ по умолчанию (десктоп): две строки "На балансе/Не на балансе" рядом, в одну линию */
+  .inv-split {
+    display:flex;
+    flex-direction: row;   /* ✅ в ряд */
+    gap: .5rem;
+    align-items: center;
+    justify-content: flex-end;
+    flex-wrap: nowrap;
+  }
+
+  .inv-stock-line{
+    display:inline-flex;
+    align-items:center;
+    gap:.5rem;
+    padding:.28rem .65rem;
+    border-radius: 999px;
+    border: 1px solid rgba(0,0,0,.10);
+    background: rgba(0,0,0,.03);
+    white-space: nowrap;   /* ✅ не ломаем внутри "шт." */
+  }
+
+  .inv-stock-line .label{
+    font-size:.78rem;
+    color: rgba(0,0,0,.6);
+    display:inline-flex;
+    align-items:center;
+    gap:.35rem;
+    white-space: nowrap;
+  }
+  .inv-stock-line .qty{
+    font-weight: 700;
+    font-size: 1.05rem;
+    line-height: 1;
+  }
+
+  .inv-stock-line.on{
+    border-color: rgba(25,135,84,.22);
+    background: rgba(25,135,84,.08);
+    color: rgba(25,135,84,.95);
+  }
+  .inv-stock-line.on .label{ color: rgba(25,135,84,.75); }
+
+  .inv-stock-line.off{
+    border-color: rgba(108,117,125,.22);
+    background: rgba(108,117,125,.08);
+    color: rgba(108,117,125,.95);
+  }
+  .inv-stock-line.off .label{ color: rgba(108,117,125,.75); }
+
+  .inv-bottom{
+    margin-top: .75rem;
+    padding-top: .75rem;
+    border-top: 1px dashed rgba(0,0,0,.10);
+  }
+
+  .inv-buildings-wrap{
+    display:flex;
+    flex-wrap: wrap;
+    gap: .4rem .5rem;
+  }
+
+  .inv-building-pill{
+    display:inline-flex;
+    align-items:center;
+    gap:.55rem;
+    padding:.32rem .65rem;
+    border-radius:999px;
+    background: rgba(0,0,0,.03);
+    border: 1px solid rgba(0,0,0,.06);
+    white-space: nowrap;
+    font-size:.9rem;
+    line-height: 1.1;
+  }
+  .inv-building-pill .bname{
+    color: rgba(0,0,0,.65);
+    font-weight: 600;
+  }
+
+  .inv-mini{
+    display:inline-flex;
+    align-items:center;
+    gap:.28rem;
+    padding:.12rem .42rem;
+    border-radius:999px;
+    border: 1px solid rgba(0,0,0,.10);
+    background: rgba(0,0,0,.03);
+    font-size: .82rem;
+  }
+  .inv-mini.on{
+    border-color: rgba(25,135,84,.22);
+    background: rgba(25,135,84,.08);
+    color: rgba(25,135,84,.95);
+  }
+  .inv-mini.off{
+    border-color: rgba(108,117,125,.22);
+    background: rgba(108,117,125,.08);
+    color: rgba(108,117,125,.95);
+  }
+
+  /* ✅ приятная светло-красная "табличка" */
+  .inv-empty{
+    display: inline-flex;
+    align-items: center;
+    gap: .55rem;
+    padding: .45rem .75rem;
+    border-radius: 12px;
+    border: 1px solid rgba(220,53,69,.22);
+    background: rgba(220,53,69,.08);
+    color: rgba(220,53,69,.95);
+    font-weight: 600;
+    white-space: nowrap;
+  }
+  .inv-empty .sub{
+    font-weight: 500;
+    color: rgba(220,53,69,.75);
+  }
+
+  /* ✅ мобилка: переносим всё, уменьшаем */
+  @media (max-width: 576px){
+    .inv-top{
+      flex-direction: column;
+      align-items: stretch;
+    }
+    .inv-stock{
+      text-align: left;
+    }
+
+    /* на телефоне возвращаем "в столбик", и делаем компактнее */
+    .inv-split{
+      flex-direction: column;
+      align-items: flex-start;
+      gap: .35rem;
+    }
+    .inv-stock-line{
+      padding: .22rem .55rem;
+    }
+    .inv-stock-line .label{
+      font-size: .72rem;
+    }
+    .inv-stock-line .qty{
+      font-size: .98rem;
+    }
+
+    .inv-pill{
+      font-size: .80rem;
+    }
+
+    .inv-empty{
+      padding: .35rem .6rem;
+      font-size: .9rem;
+    }
   }
 
   .form-control::placeholder {
-  font-size: 0.85rem;
-  color: rgba(0,0,0,.45);
-}
+    font-size: 0.85rem;
+    color: rgba(0,0,0,.45);
+  }
 </style>
 
 <div class="card shadow-sm">
   <div class="card-body p-0">
-    {% for c in cartridges %}
+
+    {% for row in stock_rows %}
+      {% with c=row.cartridge %}
+      {% stock_key c.id 0 as key_off %}
+      {% stock_key c.id 1 as key_on %}
+
+      {# ✅ берём глобальные остатки по школе #}
+      {% with on_total=stock_map|get_item:key_on|default:0 %}
+      {% with off_total=stock_map|get_item:key_off|default:0 %}
+      {% with total_qty=on_total|add:off_total %}
+
       <div class="px-3 px-md-4 py-3 inv-row">
-        <div class="d-flex align-items-start justify-content-between gap-3">
+
+        <div class="inv-top">
 
           <div class="flex-grow-1">
             <div class="d-flex flex-wrap align-items-center gap-2">
               <div class="fs-6 fw-semibold">
                 {{ c.vendor }} {{ c.code }}
               </div>
+
               {% if c.title %}
                 <span class="text-muted">•</span>
                 <div class="text-muted">{{ c.title }}</div>
@@ -166,7 +327,7 @@
 
             <div class="mt-2 d-flex flex-wrap gap-2">
               {% for pm in c.compatible_printers.all %}
-                <span class="inv-pill d-inline-flex align-items-center gap-1">
+                <span class="inv-pill">
                   <i class="bi bi-printer inv-muted"></i>
                   <span class="fw-semibold">{{ pm.vendor }} {{ pm.model }}</span>
                 </span>
@@ -177,28 +338,82 @@
           </div>
 
           <div class="inv-stock">
-            <div class="d-inline-flex align-items-baseline gap-1">
-              <span class="fs-4 fw-semibold">
-                {{ stock_map|get_item:c.id|default:"0" }} шт.
-              </span>
-            </div>
+            {% if total_qty|add:0 == 0 %}
+              <div class="inv-empty">
+                <i class="bi bi-exclamation-triangle"></i>
+                <span>Картриджей нет в наличии</span>
+              </div>
+            {% else %}
+              <div class="inv-split">
+                <div class="inv-stock-line on">
+                  <span class="label">
+                    <i class="bi bi-check-circle"></i>
+                    На балансе:
+                  </span>
+                  <span class="qty">{{ on_total|default:0 }}</span>
+                  <span class="inv-muted">шт.</span>
+                </div>
 
-            {% if buildings %}
-              <div class="mt-2 d-flex flex-wrap justify-content-end gap-2">
-                {% for bs in building_stock_rows|get_item:c.id %}
-                  {% if bs.qty|default:0 > 0 %}
-                    <span class="inv-pill inv-pill-building">
-                      <span class="inv-muted me-1">{{ bs.name }}:</span>
-                      <span class="fw-semibold">{{ bs.qty }} шт.</span>
-                    </span>
-                  {% endif %}
-                {% endfor %}
+                <div class="inv-stock-line off">
+                  <span class="label">
+                    <i class="bi bi-dash-circle"></i>
+                    Не на балансе:
+                  </span>
+                  <span class="qty">{{ off_total|default:0 }}</span>
+                  <span class="inv-muted">шт.</span>
+                </div>
               </div>
             {% endif %}
           </div>
 
         </div>
+
+        {% if buildings %}
+          <div class="inv-bottom">
+            <div class="inv-buildings-wrap">
+
+              {# если total=0 — можно не выводить пилюли по корпусам (там всё равно пусто) #}
+              {% if total_qty|add:0 != 0 %}
+                {% for b in buildings %}
+                  {% bstock_key c.id b.id as bk %}
+                  {% with bucket=building_stock_map|get_item:bk %}
+                    {% with on_qty=bucket.on|default:0 %}
+                    {% with off_qty=bucket.off|default:0 %}
+
+                      {% if on_qty|add:off_qty > 0 %}
+                        <span class="inv-building-pill">
+                          <span class="bname">{{ b.name }}</span>
+
+                          <span class="inv-mini on" title="На балансе">
+                            <i class="bi bi-check-circle"></i>
+                            <span class="fw-semibold">{{ on_qty }}</span>
+                          </span>
+
+                          <span class="inv-mini off" title="Не на балансе">
+                            <i class="bi bi-dash-circle"></i>
+                            <span class="fw-semibold">{{ off_qty }}</span>
+                          </span>
+                        </span>
+                      {% endif %}
+
+                    {% endwith %}
+                    {% endwith %}
+                  {% endwith %}
+                {% endfor %}
+              {% else %}
+                <span class="text-muted small">Остатков по корпусам нет</span>
+              {% endif %}
+
+            </div>
+          </div>
+        {% endif %}
+
       </div>
+
+      {% endwith %}
+      {% endwith %}
+      {% endwith %}
+      {% endwith %}
     {% empty %}
       <div class="text-center text-muted py-5">
         {% if q %}
@@ -208,6 +423,7 @@
         {% endif %}
       </div>
     {% endfor %}
+
   </div>
 </div>
 {% endblock %}

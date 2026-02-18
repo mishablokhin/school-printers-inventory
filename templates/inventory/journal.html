@@ -65,12 +65,10 @@
   .tx-row { border-top: 1px solid rgba(0,0,0,.06); }
   .tx-row:first-child { border-top: 0; }
 
-  /* компактнее вертикальные отступы */
   .tx-pad { padding-top: .65rem; padding-bottom: .65rem; }
 
   .tx-meta { display:flex; flex-wrap:wrap; gap: .35rem .6rem; }
 
-  /* компактные пилюли */
   .tx-pill{
     display:inline-flex;
     align-items:center;
@@ -84,7 +82,6 @@
   }
   .tx-label { color: rgba(0,0,0,.55); }
 
-  /* пилюля "поступило в" */
   .tx-pill-in{
     background: rgba(25,135,84,.08);
     border: 1px solid rgba(25,135,84,.18);
@@ -92,7 +89,6 @@
   }
   .tx-pill-in .tx-label { color: rgba(25,135,84,.75); }
 
-  /* пилюля "выдача со склада" */
   .tx-pill-out{
     background: rgba(13,110,253,.10);
     border: 1px solid rgba(13,110,253,.22);
@@ -100,7 +96,22 @@
   }
   .tx-pill-out .tx-label { color: rgba(13,110,253,.75); }
 
-  /* шапка строки */
+  .tx-pill-balance{
+    border: 1px solid rgba(0,0,0,.10);
+    background: rgba(0,0,0,.03);
+    color: rgba(0,0,0,.65);
+  }
+  .tx-pill-balance.on{
+    border-color: rgba(25,135,84,.22);
+    background: rgba(25,135,84,.08);
+    color: rgba(25,135,84,.95);
+  }
+  .tx-pill-balance.off{
+    border-color: rgba(108,117,125,.22);
+    background: rgba(108,117,125,.08);
+    color: rgba(108,117,125,.95);
+  }
+
   .tx-top{
     display:flex;
     align-items:center;
@@ -116,7 +127,6 @@
   }
   .tx-date{ color: rgba(0,0,0,.6); font-size:.9rem; white-space:nowrap; }
 
-  /* пользователь компактнее */
   .user-box { text-align: right; }
   .user-line {
     display:inline-flex;
@@ -142,7 +152,6 @@
     flex: 0 0 auto;
   }
 
-  /* строка с картриджем */
   .tx-item{
     display:flex;
     flex-wrap:wrap;
@@ -159,7 +168,6 @@
     font-size:.9rem;
   }
 
-  /* комментарий компактнее */
   .tx-comment {
     margin-top:.45rem;
     font-size:.9rem;
@@ -187,7 +195,6 @@
 
       <div class="px-3 px-md-4 tx-pad tx-row">
 
-        {# ===== Верхняя строка (тип/дата/кол-во + кто оформил) ===== #}
         <div class="tx-top">
           <div class="tx-left">
             {% if tx.tx_type == "IN" %}
@@ -208,6 +215,33 @@
               <span class="tx-label">Количество:</span>
               <span class="fw-semibold">{{ tx.qty }} шт.</span>
             </span>
+
+            {# ✅ признак баланса с разными подписями для прихода/выдачи #}
+            {% if tx.tx_type == "IN" %}
+              {% if tx.on_balance %}
+                <span class="tx-pill tx-pill-balance on">
+                  <i class="bi bi-check-circle"></i>
+                  <span class="fw-semibold">На баланс</span>
+                </span>
+              {% else %}
+                <span class="tx-pill tx-pill-balance off">
+                  <i class="bi bi-dash-circle"></i>
+                  <span class="fw-semibold">Не на баланс</span>
+                </span>
+              {% endif %}
+            {% else %}
+              {% if tx.on_balance %}
+                <span class="tx-pill tx-pill-balance on">
+                  <i class="bi bi-check-circle"></i>
+                  <span class="fw-semibold">С баланса</span>
+                </span>
+              {% else %}
+                <span class="tx-pill tx-pill-balance off">
+                  <i class="bi bi-dash-circle"></i>
+                  <span class="fw-semibold">Не с баланса</span>
+                </span>
+              {% endif %}
+            {% endif %}
           </div>
 
           <div class="user-box">
@@ -223,7 +257,6 @@
           </div>
         </div>
 
-        {# ===== Картридж ===== #}
         <div class="tx-item">
           <span class="tx-main">{{ tx.cartridge.vendor }} {{ tx.cartridge.code }}</span>
           {% if tx.cartridge.title %}
@@ -232,28 +265,22 @@
           {% endif %}
         </div>
 
-        {# ===== Пилюли ===== #}
         <div class="mt-2 tx-meta">
 
-          {# === ПРИХОД: "Поступило в корпус" === #}
           {% if tx.tx_type == "IN" %}
             <div class="tx-pill tx-pill-in">
               <i class="bi bi-arrow-down-circle"></i>
               <span class="tx-label">Поступило в</span>
               <span class="fw-semibold">{% if tx.building %}{{ tx.building.name }}{% else %}—{% endif %}</span>
             </div>
-
-          {# === ВЫДАЧА === #}
           {% else %}
 
-            {# Всегда показываем, откуда выдали (склад) #}
             <div class="tx-pill tx-pill-out">
               <i class="bi bi-arrow-up-circle"></i>
               <span class="tx-label">Со склада</span>
               <span class="fw-semibold">{% if tx.building %}{{ tx.building.name }}{% else %}—{% endif %}</span>
             </div>
 
-            {# Корпус назначения (по принтеру) #}
             {% if tx.printer and tx.printer.room and tx.printer.room.building %}
               <div class="tx-pill">
                 <i class="bi bi-buildings"></i>
@@ -297,7 +324,6 @@
           {% endif %}
         </div>
 
-        {# ===== Комментарий ===== #}
         {% if tx.comment %}
           <div class="tx-comment">
             <div class="text-muted small mb-1">Комментарий:</div>

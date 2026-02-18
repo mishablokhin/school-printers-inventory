@@ -6,7 +6,7 @@ from django.db.models import Func
 
 from .models import (
     Building, Room, Printer, PrinterModel, CartridgeModel,
-    StockTransaction
+    StockTransaction, GlobalStock
 )
 
 
@@ -15,13 +15,8 @@ from .models import (
 # -------------------------
 
 def order_rooms_queryset(qs):
-    """
-    Сортировка кабинетов: сначала по корпусу, затем по номеру кабинета "как число",
-    затем по строке (для случаев типа "2-14", "кабинет информатики" и т.д.)
-    """
     qs = qs.select_related("building")
 
-    # PostgreSQL: можно аккуратно вытащить цифры regexp_replace и сортировать числом
     if connection.vendor == "postgresql":
         digits_only = Func(
             "number",
@@ -40,7 +35,6 @@ def order_rooms_queryset(qs):
 
         return qs
 
-    # Fallback для SQLite/MySQL (без regexp_replace)
     return qs.order_by("building__name", "number")
 
 
@@ -140,9 +134,20 @@ class PrinterForm(forms.ModelForm):
         }
 
     def __init__(self, *args, **kwargs):
+        building_id = kwargs.pop("building_id", None)  # ✅ важно
         super().__init__(*args, **kwargs)
-        self.fields["room"].queryset = order_rooms_queryset(Room.objects.all())
+
+        rooms_qs = Room.objects.all()
+        if building_id:
+            rooms_qs = rooms_qs.filter(building_id=building_id)
+
+        self.fields["room"].queryset = order_rooms_queryset(rooms_qs)
         self.fields["printer_model"].queryset = PrinterModel.objects.order_by("vendor", "model")
+
+        # Если редактируем и building_id не передан – оставляем всё как есть
+        # Если building_id передан – удобно проставить initial
+        if building_id and not self.initial.get("room") and self.instance and self.instance.pk:
+            self.initial["room"] = self.instance.room_id
 
 
 # -------------------------
@@ -182,7 +187,6 @@ class StockInForm(forms.ModelForm):
 
 
 class StockOutForm(forms.ModelForm):
-    # дополнительные поля, которых нет в модели StockTransaction
     building = forms.ModelChoiceField(
         queryset=Building.objects.none(),
         required=True,
@@ -197,7 +201,6 @@ class StockOutForm(forms.ModelForm):
         widget=forms.Select(attrs={"class": "form-select"}),
     )
 
-    # NEW: откуда списывать (если в “куда выдаём” ноль)
     source_building = forms.ModelChoiceField(
         queryset=Building.objects.none(),
         required=False,
@@ -205,18 +208,23 @@ class StockOutForm(forms.ModelForm):
         widget=forms.Select(attrs={"class": "form-select"}),
     )
 
+    cartridge_variant = forms.ChoiceField(
+        required=True,
+        label="Картридж",
+        choices=[],
+        widget=forms.Select(attrs={"class": "form-select"}),
+    )
+
     class Meta:
         model = StockTransaction
-        fields = ["building", "room", "printer", "cartridge", "qty", "comment"]
+        fields = ["building", "room", "printer", "qty", "comment"]
         labels = {
             "printer": "Принтер",
-            "cartridge": "Картридж",
             "qty": "Количество",
             "comment": "Комментарий",
         }
         widgets = {
             "printer": forms.Select(attrs={"class": "form-select"}),
-            "cartridge": forms.Select(attrs={"class": "form-select"}),
             "qty": forms.NumberInput(attrs={"class": "form-control", "min": 1}),
             "comment": forms.Textarea(attrs={"class": "form-control", "rows": 2}),
         }
@@ -225,28 +233,29 @@ class StockOutForm(forms.ModelForm):
         building_id = kwargs.pop("building_id", None)
         room_id = kwargs.pop("room_id", None)
         printer_id = kwargs.pop("printer_id", None)
+
+        # optional: список корпусов-источников от view
+        source_building_ids = kwargs.pop("source_building_ids", None)
+
         super().__init__(*args, **kwargs)
 
-        # сортировка корпуса — всегда
         self.fields["building"].queryset = Building.objects.order_by("name")
 
-        # NEW: источники (список корпусов) — заполняем всегда, а показывать/фильтровать будем в view
-        self.fields["source_building"].queryset = Building.objects.order_by("name")
+        # source_building по умолчанию пустой (а если view передал ids — ограничим)
+        if source_building_ids is not None:
+            self.fields["source_building"].queryset = Building.objects.filter(id__in=source_building_ids).order_by("name")
+        else:
+            self.fields["source_building"].queryset = Building.objects.order_by("name")
 
-        # По умолчанию: ничего не показываем, пока не выбрали корпус/кабинет
         self.fields["printer"].queryset = Printer.objects.none()
-        self.fields["cartridge"].queryset = CartridgeModel.objects.none()
+        self.fields["room"].queryset = Room.objects.none()
+        self.fields["cartridge_variant"].choices = [("", "— выберите картридж —")]
 
-        # Корпус → фильтруем кабинеты (и сортируем "правильно")
         if building_id:
-            rooms_qs = Room.objects.filter(building_id=building_id)
-            rooms_qs = order_rooms_queryset(rooms_qs)
+            rooms_qs = order_rooms_queryset(Room.objects.filter(building_id=building_id))
             self.fields["room"].queryset = rooms_qs
             self.initial["building"] = building_id
-        else:
-            self.fields["room"].queryset = Room.objects.none()
 
-        # Кабинет → фильтруем принтеры
         if room_id:
             self.fields["printer"].queryset = (
                 Printer.objects.select_related("printer_model", "room", "room__building")
@@ -255,14 +264,65 @@ class StockOutForm(forms.ModelForm):
             )
             self.initial["room"] = room_id
 
-        # Принтер → фильтруем картриджи по совместимости
         if printer_id:
             try:
                 printer = Printer.objects.select_related("printer_model").get(pk=printer_id)
-                self.fields["cartridge"].queryset = (
-                    CartridgeModel.objects.filter(compatible_printers=printer.printer_model)
+
+                base_qs = (
+                    CartridgeModel.objects
+                    .filter(compatible_printers=printer.printer_model)
                     .order_by("vendor", "code")
                 )
+
+                # Остатки по школе для формирования вариантов
+                gs_map = {
+                    f"{s.cartridge_id}:{1 if s.on_balance else 0}": s.qty
+                    for s in GlobalStock.objects.all()
+                }
+
+                choices = [("", "— выберите картридж —")]
+                for c in base_qs:
+                    on_qty = gs_map.get(f"{c.id}:1", 0)
+                    off_qty = gs_map.get(f"{c.id}:0", 0)
+
+                    # показываем оба варианта, если они в принципе встречались или есть остаток
+                    # (если хочешь строго “как раньше”: показывать вариант с пометкой “(на балансе)” только при наличии)
+                    if off_qty > 0 or on_qty == 0:
+                        choices.append((f"{c.id}:0", f"{c.vendor} {c.code}"))
+                    if on_qty > 0:
+                        choices.append((f"{c.id}:1", f"{c.vendor} {c.code} (на балансе)"))
+
+                    # если вообще всё 0, оставим хотя бы один вариант "не на балансе"
+                    if on_qty == 0 and off_qty == 0:
+                        # гарантируем, что "не на балансе" есть
+                        if (f"{c.id}:0", f"{c.vendor} {c.code}") not in choices:
+                            choices.append((f"{c.id}:0", f"{c.vendor} {c.code}"))
+
+                self.fields["cartridge_variant"].choices = choices
                 self.initial["printer"] = printer_id
+
             except Printer.DoesNotExist:
                 pass
+
+    def clean_cartridge_variant(self):
+        val = (self.cleaned_data.get("cartridge_variant") or "").strip()
+        if not val or ":" not in val:
+            raise forms.ValidationError("Выберите картридж.")
+        c_id, flag = val.split(":", 1)
+        if not c_id.isdigit() or flag not in ("0", "1"):
+            raise forms.ValidationError("Некорректный тип картриджа.")
+        return val
+
+    def clean(self):
+        cleaned = super().clean()
+
+        # Проставить instance.cartridge и instance.on_balance
+        variant = cleaned.get("cartridge_variant")
+        if variant and ":" in variant:
+            c_id, flag = variant.split(":", 1)
+            try:
+                self.instance.cartridge = CartridgeModel.objects.get(pk=int(c_id))
+                self.instance.on_balance = (flag == "1")
+            except (CartridgeModel.DoesNotExist, ValueError):
+                self.add_error("cartridge_variant", "Выбранный картридж не найден.")
+        return cleaned

@@ -21,6 +21,41 @@
 
 </div>
 
+    <style>
+  .balance-box{
+    border: 1px solid rgba(13,110,253,.18);
+    background: rgba(13,110,253,.06);
+    border-radius: 14px;
+    padding: .9rem 1rem;
+  }
+
+  .balance-box .form-check{
+    display:flex;
+    align-items:center;
+    gap:.75rem;
+    margin:0;
+  }
+
+  .balance-box .form-check-input{
+    width: 2.6rem;
+    height: 1.4rem;
+    margin-top: 0;
+    cursor: pointer;
+  }
+
+  .balance-box .form-check-label{
+    font-size: 1.05rem;   /* ✅ больше и заметнее */
+    font-weight: 700;     /* ✅ жирнее */
+    cursor: pointer;
+  }
+
+  .balance-hint{
+    margin-top: .35rem;
+    color: rgba(0,0,0,.6);
+    font-size: .9rem;
+  }
+</style>
+
 
 <div class="card shadow-sm">
   <div class="card-body">
@@ -41,14 +76,19 @@
           {{ form.building }}
         </div>
 
-          <div class="col-12">
-          <div class="form-check mt-1">
-            {{ form.on_balance }}
-            <label class="form-check-label" for="{{ form.on_balance.id_for_label }}">
-              На балансе школы
-            </label>
+        <div class="col-12">
+          <div class="balance-box">
+            <div class="form-check form-switch">
+              {{ form.on_balance }}
+              <label class="form-check-label" for="{{ form.on_balance.id_for_label }}">
+                Поставка на баланс школы
+              </label>
+            </div>
+            <div class="balance-hint">
+              Отметьте, если этот картридж ставится на баланс!
+            </div>
           </div>
-          </div>
+        </div>
 
         <div class="col-12">
             <label class="form-label">Комментарий <label class="text-muted">(необязательно)</label></label>

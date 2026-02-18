@@ -17,20 +17,117 @@
 <style>
   .inv-row { border-top: 1px solid rgba(0,0,0,.06); }
   .inv-row:first-child { border-top: 0; }
-  .inv-pill { display:inline-flex; align-items:center; padding:.28rem .6rem; border-radius:999px; background: rgba(0,0,0,.04); }
+
+  .inv-pill {
+    display:inline-flex;
+    align-items:center;
+    gap:.35rem;
+    padding:.28rem .6rem;
+    border-radius:999px;
+    background: rgba(0,0,0,.04);
+    white-space: nowrap;
+    font-size: .85rem;
+    line-height: 1.1;
+  }
   .inv-muted { color: rgba(0,0,0,.55); }
-  .inv-stock {
-    min-width: 96px;
+
+  .inv-stock{
     text-align: right;
     font-variant-numeric: tabular-nums;
+    flex: 0 0 auto;
+    min-width: 220px;
+  }
+
+  .inv-split{
+    display:flex;
+    flex-direction: row;
+    gap: .5rem;
+    align-items:center;
+    justify-content:flex-end;
+    flex-wrap: nowrap;
+  }
+
+  .inv-stock-line{
+    display:inline-flex;
+    align-items:center;
+    gap:.5rem;
+    padding:.28rem .65rem;
+    border-radius: 999px;
+    border: 1px solid rgba(0,0,0,.10);
+    background: rgba(0,0,0,.03);
+    white-space: nowrap;
+  }
+  .inv-stock-line .label{
+    font-size:.78rem;
+    color: rgba(0,0,0,.6);
+    display:inline-flex;
+    align-items:center;
+    gap:.35rem;
+    white-space: nowrap;
+  }
+  .inv-stock-line .qty{
+    font-weight: 700;
+    font-size: 1.05rem;
+    line-height: 1;
+  }
+
+  .inv-stock-line.on{
+    border-color: rgba(25,135,84,.22);
+    background: rgba(25,135,84,.08);
+    color: rgba(25,135,84,.95);
+  }
+  .inv-stock-line.on .label{ color: rgba(25,135,84,.75); }
+
+  .inv-stock-line.off{
+    border-color: rgba(108,117,125,.22);
+    background: rgba(108,117,125,.08);
+    color: rgba(108,117,125,.95);
+  }
+  .inv-stock-line.off .label{ color: rgba(108,117,125,.75); }
+
+  /* приятная светло-красная табличка */
+  .inv-empty{
+    display:inline-flex;
+    align-items:center;
+    gap:.55rem;
+    padding:.45rem .75rem;
+    border-radius: 12px;
+    border: 1px solid rgba(220,53,69,.22);
+    background: rgba(220,53,69,.08);
+    color: rgba(220,53,69,.95);
+    font-weight: 600;
+    white-space: nowrap;
+  }
+
+  @media (max-width: 576px){
+    .inv-stock{ text-align:left; min-width: 0; }
+    .inv-split{
+      flex-direction: column;
+      align-items:flex-start;
+      gap: .35rem;
+    }
+    .inv-stock-line{
+      padding: .22rem .55rem;
+    }
+    .inv-stock-line .label{ font-size: .72rem; }
+    .inv-stock-line .qty{ font-size: .98rem; }
+    .inv-pill{ font-size: .80rem; }
+    .inv-empty{ padding: .35rem .6rem; font-size: .9rem; }
   }
 </style>
 
 <div class="card shadow-sm">
   <div class="card-body p-0">
     {% for c in cartridges %}
+
+      {% with bucket=stock_map|get_item:c.id %}
+        {% with on_qty=bucket.on|default:0 %}
+        {% with off_qty=bucket.off|default:0 %}
+        {% with total_qty=on_qty|add:off_qty %}
+
       <div class="px-3 px-md-4 py-3 inv-row">
         <div class="d-flex align-items-start justify-content-between gap-3">
+
           <div class="flex-grow-1">
             <div class="d-flex flex-wrap align-items-center gap-2">
               <div class="fs-6 fw-semibold">
@@ -44,10 +141,10 @@
 
             <div class="mt-2 d-flex flex-wrap gap-2">
               {% for pm in c.compatible_printers.all %}
-            <span class="inv-pill d-inline-flex align-items-center gap-1">
-              <i class="bi bi-printer inv-muted"></i>
-              <span class="fw-semibold">{{ pm.vendor }} {{ pm.model }}</span>
-            </span>
+                <span class="inv-pill">
+                  <i class="bi bi-printer inv-muted"></i>
+                  <span class="fw-semibold">{{ pm.vendor }} {{ pm.model }}</span>
+                </span>
               {% empty %}
                 <span class="text-muted">Совместимость не задана</span>
               {% endfor %}
@@ -55,13 +152,42 @@
           </div>
 
           <div class="inv-stock">
-            <div class="text-muted small">Остаток</div>
-            <div class="fs-4 fw-semibold">
-              {{ stock_map|get_item:c.id|default:"0" }} шт.
-            </div>
+            {% if total_qty|add:0 == 0 %}
+              <div class="inv-empty">
+                <i class="bi bi-exclamation-triangle"></i>
+                <span>Картриджей нет в наличии</span>
+              </div>
+            {% else %}
+              <div class="inv-split">
+                <div class="inv-stock-line on">
+                  <span class="label">
+                    <i class="bi bi-check-circle"></i>
+                    На балансе:
+                  </span>
+                  <span class="qty">{{ on_qty }}</span>
+                  <span class="inv-muted">шт.</span>
+                </div>
+
+                <div class="inv-stock-line off">
+                  <span class="label">
+                    <i class="bi bi-dash-circle"></i>
+                    Не на балансе:
+                  </span>
+                  <span class="qty">{{ off_qty }}</span>
+                  <span class="inv-muted">шт.</span>
+                </div>
+              </div>
+            {% endif %}
           </div>
+
         </div>
       </div>
+
+        {% endwith %}
+        {% endwith %}
+        {% endwith %}
+        {% endwith %}
+
     {% empty %}
       <div class="text-center text-muted py-5">
         В этом корпусе пока нет остатков

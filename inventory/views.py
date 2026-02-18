@@ -34,54 +34,51 @@ class DashboardView(LoginRequiredMixin, TemplateView):
 
         q = (self.request.GET.get("q") or "").strip()
 
-        cartridges = (
+        cartridges_qs = (
             CartridgeModel.objects
             .prefetch_related("compatible_printers")
             .order_by("vendor", "code")
         )
 
-        # Поиск по картриджу: vendor/code/title
-        # Поиск по принтеру (совместимости): compatible_printers.vendor/model
         if q:
-            cartridges = (
-                cartridges
-                .filter(
+            cartridges_qs = (
+                cartridges_qs.filter(
                     Q(vendor__icontains=q) |
                     Q(code__icontains=q) |
                     Q(title__icontains=q) |
                     Q(compatible_printers__vendor__icontains=q) |
                     Q(compatible_printers__model__icontains=q)
-                )
-                .distinct()
+                ).distinct()
             )
 
-        stock_map = {s.cartridge_id: s.qty for s in GlobalStock.objects.all()}
+        cartridges = list(cartridges_qs)
         buildings = list(Building.objects.order_by("name"))
 
-        # (cartridge_id, building_id) -> qty
-        bs_pairs = {
-            (s.cartridge_id, s.building_id): s.qty
-            for s in BuildingStock.objects.all()
+        # global stock: "cartridge_id:0/1" -> qty
+        stock_map = {
+            f"{s.cartridge_id}:{1 if s.on_balance else 0}": s.qty
+            for s in GlobalStock.objects.all()
         }
 
-        # cartridge_id -> [{id, name, qty}, ...] (по всем корпусам, даже если 0)
-        building_stock_rows = {}
-        for c in cartridges:
-            rows = []
-            for b in buildings:
-                rows.append({
-                    "id": b.id,
-                    "name": b.name,
-                    "qty": bs_pairs.get((c.id, b.id), 0),
-                })
-            building_stock_rows[c.id] = rows
+        # building stock: "cartridge_id:building_id" -> {"on": qty, "off": qty}
+        building_stock_map = {}
+        for s in BuildingStock.objects.all():
+            key = f"{s.cartridge_id}:{s.building_id}"
+            bucket = building_stock_map.setdefault(key, {"on": 0, "off": 0})
+            if s.on_balance:
+                bucket["on"] = s.qty
+            else:
+                bucket["off"] = s.qty
+
+        # ✅ одна строка = одна модель картриджа
+        stock_rows = [{"cartridge": c} for c in cartridges]
 
         ctx.update({
             "q": q,
-            "cartridges": cartridges,
+            "stock_rows": stock_rows,
             "stock_map": stock_map,
             "buildings": buildings,
-            "building_stock_rows": building_stock_rows,
+            "building_stock_map": building_stock_map,
         })
         return ctx
 
@@ -91,10 +88,28 @@ class BuildingStatsView(LoginRequiredMixin, TemplateView):
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
+
         building = Building.objects.get(pk=kwargs["pk"])
-        cartridges = CartridgeModel.objects.prefetch_related("compatible_printers").order_by("vendor", "code")
-        stock_map = {s.cartridge_id: s.qty for s in BuildingStock.objects.filter(building=building)}
-        ctx.update({"building": building, "cartridges": cartridges, "stock_map": stock_map})
+        cartridges = (
+            CartridgeModel.objects
+            .prefetch_related("compatible_printers")
+            .order_by("vendor", "code")
+        )
+
+        # "cartridge_id" -> {"on": qty, "off": qty}
+        stock_map = {}
+        for s in BuildingStock.objects.filter(building=building):
+            bucket = stock_map.setdefault(s.cartridge_id, {"on": 0, "off": 0})
+            if s.on_balance:
+                bucket["on"] = s.qty
+            else:
+                bucket["off"] = s.qty
+
+        ctx.update({
+            "building": building,
+            "cartridges": cartridges,
+            "stock_map": stock_map,
+        })
         return ctx
 
 
@@ -139,13 +154,11 @@ class StockInCreateView(LoginRequiredMixin, CreateView):
                 tx.save()
                 apply_transaction(tx)
         except ValidationError as e:
-            # ошибки модели (qty==0 и т.п.)
             for field, errors in (e.message_dict or {}).items():
                 for msg in errors:
                     form.add_error(field if field in form.fields else None, msg)
             return self.form_invalid(form)
         except ValueError as e:
-            # ошибки остатков из apply_transaction
             form.add_error(None, str(e))
             return self.form_invalid(form)
 
@@ -159,30 +172,88 @@ class StockOutCreateView(LoginRequiredMixin, CreateView):
 
     def _get_ids(self):
         src = self.request.POST if self.request.method == "POST" else self.request.GET
-        building_id = src.get("building") or ""
-        room_id = src.get("room") or ""
-        printer_id = src.get("printer") or ""
-        cartridge_id = src.get("cartridge") or ""
-        return building_id, room_id, printer_id, cartridge_id
+        building_id = (src.get("building") or "").strip()
+        room_id = (src.get("room") or "").strip()
+        printer_id = (src.get("printer") or "").strip()
+        cartridge_variant = (src.get("cartridge_variant") or "").strip()
+        return building_id, room_id, printer_id, cartridge_variant
+
+    def _parse_variant(self, cartridge_variant: str):
+        if cartridge_variant and ":" in cartridge_variant:
+            c_id, flag = cartridge_variant.split(":", 1)
+            if c_id.isdigit() and flag in ("0", "1"):
+                return int(c_id), (flag == "1")
+        return None, None
+
+    def _calc_stock(self, cartridge_id: int, on_balance: bool, building_id: int | None):
+        global_qty = (
+            GlobalStock.objects
+            .filter(cartridge_id=cartridge_id, on_balance=on_balance)
+            .values_list("qty", flat=True)
+            .first()
+        )
+        global_qty = int(global_qty or 0)
+
+        building_qty = None
+        if building_id:
+            building_qty = (
+                BuildingStock.objects
+                .filter(building_id=building_id, cartridge_id=cartridge_id, on_balance=on_balance)
+                .values_list("qty", flat=True)
+                .first()
+            )
+            building_qty = int(building_qty or 0)
+
+        # корпуса-источники (где qty > 0), кроме выбранного корпуса назначения
+        src_qs = (
+            BuildingStock.objects
+            .select_related("building")
+            .filter(cartridge_id=cartridge_id, on_balance=on_balance, qty__gt=0)
+        )
+        if building_id:
+            src_qs = src_qs.exclude(building_id=building_id)
+
+        available_source_buildings = [
+            {"id": s.building_id, "name": s.building.name, "qty": s.qty}
+            for s in src_qs.order_by("building__name")
+        ]
+
+        return global_qty, building_qty, available_source_buildings
 
     def get_form_kwargs(self):
         kwargs = super().get_form_kwargs()
-        building_id, room_id, printer_id, _ = self._get_ids()
-        kwargs.update(
-            {
-                "building_id": building_id or None,
-                "room_id": room_id or None,
-                "printer_id": printer_id or None,
-            }
-        )
+        building_id, room_id, printer_id, cartridge_variant = self._get_ids()
+
+        # посчитаем доступные корпуса-источники, чтобы ограничить queryset source_building
+        src_ids = None
+        c_id, on_balance = self._parse_variant(cartridge_variant)
+        if c_id and on_balance is not None:
+            try:
+                b_id_int = int(building_id) if building_id else None
+            except ValueError:
+                b_id_int = None
+
+            _, _, available = self._calc_stock(c_id, on_balance, b_id_int)
+            src_ids = [x["id"] for x in available]
+
+        kwargs.update({
+            "building_id": building_id or None,
+            "room_id": room_id or None,
+            "printer_id": printer_id or None,
+            "source_building_ids": src_ids,  # ✅ важно
+        })
         return kwargs
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
-        building_id, room_id, printer_id, cartridge_id = self._get_ids()
+        building_id, room_id, printer_id, cartridge_variant = self._get_ids()
 
         selected_building = Building.objects.filter(pk=building_id).first() if building_id else None
-        selected_room = Room.objects.select_related("building").filter(pk=room_id).first() if room_id else None
+        selected_room = (
+            Room.objects.select_related("building")
+            .filter(pk=room_id).first()
+            if room_id else None
+        )
         selected_printer = (
             Printer.objects.select_related("printer_model", "room", "room__building")
             .filter(pk=printer_id).first()
@@ -192,87 +263,63 @@ class StockOutCreateView(LoginRequiredMixin, CreateView):
         printers_in_room = []
         if selected_room:
             printers_in_room = (
-                Printer.objects.select_related("printer_model")
+                Printer.objects
+                .select_related("printer_model")
                 .filter(room=selected_room)
                 .order_by("printer_model__vendor", "printer_model__model", "inventory_tag")
             )
 
         selected_cartridge = None
+        selected_on_balance = None
         building_qty = None
         global_qty = None
+        available_source_buildings = []
         can_issue = True
 
-        form = ctx.get("form")
-        cartridge_qs = form.fields["cartridge"].queryset if form and "cartridge" in form.fields else None
-        if cartridge_id and cartridge_qs is not None:
-            selected_cartridge = cartridge_qs.filter(pk=cartridge_id).first()
+        c_id, on_balance = self._parse_variant(cartridge_variant)
+        if c_id and on_balance is not None:
+            selected_cartridge = CartridgeModel.objects.filter(pk=c_id).first()
+            selected_on_balance = on_balance
 
-        # Остаток в выбранном корпусе (куда выдаём)
-        if selected_building and selected_cartridge:
-            building_qty = (
-                BuildingStock.objects
-                .filter(building=selected_building, cartridge=selected_cartridge)
-                .values_list("qty", flat=True)
-                .first()
-            )
-            building_qty = 0 if building_qty is None else building_qty
-            can_issue = building_qty > 0
+            if selected_building and selected_cartridge:
+                global_qty, building_qty, available_source_buildings = self._calc_stock(
+                    cartridge_id=selected_cartridge.id,
+                    on_balance=selected_on_balance,
+                    building_id=selected_building.id,
+                )
 
-        # Общий остаток
-        if selected_cartridge:
-            global_qty = (
-                GlobalStock.objects
-                .filter(cartridge=selected_cartridge)
-                .values_list("qty", flat=True)
-                .first()
-            )
-            global_qty = 0 if global_qty is None else global_qty
+                # можно ли выдать: либо есть в выбранном корпусе, либо есть в других (и общий остаток позволяет)
+                try:
+                    desired_qty = int(self.request.GET.get("qty") or self.request.POST.get("qty") or 1)
+                except Exception:
+                    desired_qty = 1
 
-        # NEW: альтернативные корпуса-источники, где есть картриджи > 0
-        available_source_buildings = []
-        if selected_cartridge:
-            source_rows = (
-                BuildingStock.objects
-                .select_related("building")
-                .filter(cartridge=selected_cartridge, qty__gt=0)
-                .order_by("building__name")
-            )
-            for row in source_rows:
-                if selected_building and row.building_id == selected_building.id:
-                    continue
-                available_source_buildings.append({
-                    "id": row.building_id,
-                    "name": row.building.name,
-                    "qty": row.qty,
-                })
+                can_issue = (building_qty >= desired_qty) or (len(available_source_buildings) > 0 and global_qty >= desired_qty)
 
-        # NEW: можно оформить выдачу, если:
-        # - есть в выбранном корпусе
-        # - или есть альтернативные корпуса-источники
-        if building_qty is not None:
-            can_issue = (building_qty > 0) or bool(available_source_buildings)
+                # важно: если список источников есть, ограничим поле в форме (вдобавок к get_form_kwargs)
+                form = ctx.get("form")
+                if form:
+                    if available_source_buildings:
+                        form.fields["source_building"].queryset = Building.objects.filter(
+                            id__in=[x["id"] for x in available_source_buildings]
+                        ).order_by("name")
+                    else:
+                        form.fields["source_building"].queryset = Building.objects.none()
 
-        # NEW: ограничим выпадающий список source_building только доступными складами
-        if form and "source_building" in form.fields:
-            ids = [x["id"] for x in available_source_buildings]
-            form.fields["source_building"].queryset = Building.objects.filter(id__in=ids).order_by("name")
-            # Можно проставить дефолт (первый доступный)
-            if ids and not form.initial.get("source_building"):
-                form.initial["source_building"] = ids[0]
+        ctx.update({
+            "selected_building": selected_building,
+            "selected_room": selected_room,
+            "selected_printer": selected_printer,
+            "printers_in_room": printers_in_room,
 
-        ctx.update(
-            {
-                "selected_building": selected_building,
-                "selected_room": selected_room,
-                "selected_printer": selected_printer,
-                "printers_in_room": printers_in_room,
-                "selected_cartridge": selected_cartridge,
-                "building_qty": building_qty,
-                "global_qty": global_qty,
-                "can_issue": can_issue,
-                "available_source_buildings": available_source_buildings,
-            }
-        )
+            "selected_cartridge": selected_cartridge,
+            "selected_on_balance": selected_on_balance,
+
+            "building_qty": building_qty,
+            "global_qty": global_qty,
+            "available_source_buildings": available_source_buildings,
+            "can_issue": can_issue,
+        })
         return ctx
 
     def form_valid(self, form):
@@ -280,33 +327,37 @@ class StockOutCreateView(LoginRequiredMixin, CreateView):
         tx.created_by = self.request.user
         tx.tx_type = StockTransaction.Type.OUT
 
-        # куда выдаём (назначение) – берём из принтера
+        # куда выдаём (корпус назначения) – по принтеру
         destination_building = tx.printer.room.building if tx.printer else None
 
-        # NEW: откуда списываем (если выбрали)
+        # откуда списываем (корпус-склад)
         source_building = form.cleaned_data.get("source_building")
 
-        # списание выполняем с source_building, если он выбран, иначе со “своего” корпуса назначения
+        # по умолчанию списываем из корпуса назначения
         tx.building = source_building or destination_building
 
-        # кому выдали
+        # cartridge/on_balance проставлены в форме
+        if not tx.cartridge_id:
+            form.add_error("cartridge_variant", "Выберите картридж.")
+            return self.form_invalid(form)
+
         tx.issued_to = (
             tx.printer.room.owner_name
             if (tx.printer and tx.printer.room and tx.printer.room.owner_name)
             else ""
         )
 
-        # Проверка на сервере формы: остаток должен быть в КОРПУСЕ-ИСТОЧНИКЕ
-        if tx.building_id and tx.cartridge_id:
-            bqty = (
-                BuildingStock.objects
-                .filter(building_id=tx.building_id, cartridge_id=tx.cartridge_id)
-                .values_list("qty", flat=True)
-                .first()
-            ) or 0
-            if bqty <= 0:
-                form.add_error(None, "Недостаточно картриджей в выбранном корпусе-складе.")
-                return self.form_invalid(form)
+        # проверка остатков в корпусе-источнике
+        bqty = (
+            BuildingStock.objects
+            .filter(building_id=tx.building_id, cartridge_id=tx.cartridge_id, on_balance=tx.on_balance)
+            .values_list("qty", flat=True)
+            .first()
+        ) or 0
+
+        if bqty < tx.qty:
+            form.add_error(None, "Недостаточно картриджей выбранного типа (баланс/не баланс) в корпусе-складе.")
+            return self.form_invalid(form)
 
         try:
             with transaction.atomic():
