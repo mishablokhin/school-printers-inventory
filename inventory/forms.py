@@ -152,17 +152,19 @@ class PrinterForm(forms.ModelForm):
 class StockInForm(forms.ModelForm):
     class Meta:
         model = StockTransaction
-        fields = ["cartridge", "qty", "building", "comment"]
+        fields = ["cartridge", "qty", "building", "on_balance", "comment"]
         labels = {
             "cartridge": "Картридж",
             "qty": "Количество",
             "building": "Корпус (склад)",
+            "on_balance": "На балансе школы",
             "comment": "Комментарий",
         }
         widgets = {
             "cartridge": forms.Select(attrs={"class": "form-select"}),
             "qty": forms.NumberInput(attrs={"class": "form-control", "min": 1}),
             "building": forms.Select(attrs={"class": "form-select", "required": True}),
+            "on_balance": forms.CheckboxInput(attrs={"class": "form-check-input"}),
             "comment": forms.Textarea(attrs={"class": "form-control", "rows": 2}),
         }
 

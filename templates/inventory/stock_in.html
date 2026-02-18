@@ -41,6 +41,15 @@
           {{ form.building }}
         </div>
 
+          <div class="col-12">
+          <div class="form-check mt-1">
+            {{ form.on_balance }}
+            <label class="form-check-label" for="{{ form.on_balance.id_for_label }}">
+              На балансе школы
+            </label>
+          </div>
+          </div>
+
         <div class="col-12">
             <label class="form-label">Комментарий <label class="text-muted">(необязательно)</label></label>
           {{ form.comment }}

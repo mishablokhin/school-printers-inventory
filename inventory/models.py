@@ -102,6 +102,11 @@ class StockTransaction(models.Model):
     created_by = models.ForeignKey(
         settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="stock_transactions"
     )
+    on_balance = models.BooleanField(
+        default=False,
+        verbose_name="Постановка на баланс",
+        help_text="Отметьте, если эти картриджи поступают на баланс школы",
+    )
 
     tx_type = models.CharField(max_length=3, choices=Type.choices)
     cartridge = models.ForeignKey(CartridgeModel, on_delete=models.PROTECT, related_name="transactions")

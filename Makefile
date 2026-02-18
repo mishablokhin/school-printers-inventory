@@ -31,6 +31,12 @@ sh:
 migrate:
 	docker compose -f docker-compose.yml -f docker-compose.dev.yml exec web python manage.py migrate
 
+make-migrations:
+	docker compose -f docker-compose.yml -f docker-compose.dev.yml exec web python manage.py makemigrations
+
+django-shell:
+	docker compose -f docker-compose.yml -f docker-compose.dev.yml exec web python manage.py shell
+
 createsuperuser:
 	docker compose -f docker-compose.yml -f docker-compose.dev.yml exec web python manage.py createsuperuser
 
