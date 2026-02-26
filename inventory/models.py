@@ -118,7 +118,7 @@ class StockTransaction(models.Model):
     )
 
     tx_type = models.CharField(max_length=3, choices=Type.choices)
-    cartridge = models.ForeignKey(CartridgeModel, on_delete=models.PROTECT, related_name="transactions")
+    cartridge = models.ForeignKey(CartridgeModel, on_delete=models.CASCADE, related_name="transactions")
     qty = models.PositiveIntegerField()
 
     # ✅ Новый флаг: эта партия на балансе школы
