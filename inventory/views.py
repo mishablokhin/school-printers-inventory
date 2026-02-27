@@ -21,6 +21,9 @@ from .models import (
 )
 from .services import apply_transaction
 
+from inventory.mixins.delete_confirm import DeleteConfirmContextMixin
+from inventory.utils.delete_inspector import get_deleteability_map
+
 
 # -------------------------
 # Остатки и журнал
@@ -411,6 +414,11 @@ class BuildingList(LoginRequiredMixin, ListView):
     paginate_by = 50
     ordering = ["name"]
 
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        ctx["deleteability_map"] = get_deleteability_map(ctx.get("items"))
+        return ctx
+
 
 class BuildingCreate(LoginRequiredMixin, CreateView):
     model = Building
@@ -436,10 +444,11 @@ class BuildingUpdate(LoginRequiredMixin, UpdateView):
         return ctx
 
 
-class BuildingDelete(LoginRequiredMixin, DeleteView):
+class BuildingDelete(LoginRequiredMixin, DeleteConfirmContextMixin, DeleteView):
     model = Building
     template_name = "inventory/crud/confirm_delete.html"
     success_url = reverse_lazy("inventory:buildings")
+    delete_kind = "корпус"
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
@@ -464,6 +473,7 @@ class RoomList(LoginRequiredMixin, ListView):
         ctx = super().get_context_data(**kwargs)
         ctx["buildings"] = Building.objects.order_by("name")
         ctx["selected_building_id"] = (self.request.GET.get("building") or "").strip()
+        ctx["deleteability_map"] = get_deleteability_map(ctx.get("items"))
         return ctx
 
 
@@ -491,10 +501,11 @@ class RoomUpdate(LoginRequiredMixin, UpdateView):
         return ctx
 
 
-class RoomDelete(LoginRequiredMixin, DeleteView):
+class RoomDelete(LoginRequiredMixin, DeleteConfirmContextMixin, DeleteView):
     model = Room
     template_name = "inventory/crud/confirm_delete.html"
     success_url = reverse_lazy("inventory:rooms")
+    delete_kind = "кабинет"
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
@@ -508,6 +519,11 @@ class PrinterModelList(LoginRequiredMixin, ListView):
     context_object_name = "items"
     paginate_by = 50
     ordering = ["vendor", "model"]
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        ctx["deleteability_map"] = get_deleteability_map(ctx.get("items"))
+        return ctx
 
 
 class PrinterModelCreate(LoginRequiredMixin, CreateView):
@@ -534,10 +550,11 @@ class PrinterModelUpdate(LoginRequiredMixin, UpdateView):
         return ctx
 
 
-class PrinterModelDelete(LoginRequiredMixin, DeleteView):
+class PrinterModelDelete(LoginRequiredMixin, DeleteConfirmContextMixin, DeleteView):
     model = PrinterModel
     template_name = "inventory/crud/confirm_delete.html"
     success_url = reverse_lazy("inventory:printer_models")
+    delete_kind = "модель принтера"
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
@@ -551,6 +568,11 @@ class CartridgeModelList(LoginRequiredMixin, ListView):
     context_object_name = "items"
     paginate_by = 50
     ordering = ["vendor", "code"]
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        ctx["deleteability_map"] = get_deleteability_map(ctx.get("items"))
+        return ctx
 
 
 class CartridgeModelCreate(LoginRequiredMixin, CreateView):
@@ -577,10 +599,11 @@ class CartridgeModelUpdate(LoginRequiredMixin, UpdateView):
         return ctx
 
 
-class CartridgeModelDelete(LoginRequiredMixin, DeleteView):
+class CartridgeModelDelete(LoginRequiredMixin, DeleteConfirmContextMixin, DeleteView):
     model = CartridgeModel
     template_name = "inventory/crud/confirm_delete.html"
     success_url = reverse_lazy("inventory:cartridge_models")
+    delete_kind = "модель картриджа"
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
@@ -645,6 +668,7 @@ class PrinterList(LoginRequiredMixin, ListView):
         ctx = super().get_context_data(**kwargs)
         ctx["buildings"] = Building.objects.order_by("name")
         ctx["selected_building_id"] = (self.request.GET.get("building") or "").strip()
+        ctx["deleteability_map"] = get_deleteability_map(ctx.get("items"))
         return ctx
 
 
@@ -691,10 +715,11 @@ class PrinterUpdate(LoginRequiredMixin, UpdateView):
         return ctx
 
 
-class PrinterDelete(LoginRequiredMixin, DeleteView):
+class PrinterDelete(LoginRequiredMixin, DeleteConfirmContextMixin, DeleteView):
     model = Printer
     template_name = "inventory/crud/confirm_delete.html"
     success_url = reverse_lazy("inventory:printers")
+    delete_kind = "принтер"
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
