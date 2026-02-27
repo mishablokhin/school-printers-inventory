@@ -56,7 +56,6 @@
       placeholder="Поиск по модели картриджа, корпусу, принтеру, кабинету, сотруднику..."
     >
 
-    {# сохраняем type при поиске #}
     {% if type_filter %}
       <input type="hidden" name="type" value="{{ type_filter }}">
     {% endif %}
@@ -295,7 +294,7 @@
               <span class="fw-semibold">{{ tx.qty }} шт.</span>
             </span>
 
-            {# ✅ признак баланса с разными подписями для прихода/выдачи #}
+            {# Признак баланса с разными подписями для прихода/выдачи #}
             {% if tx.tx_type == "IN" %}
               {% if tx.on_balance %}
                 <span class="tx-pill tx-pill-balance on">
@@ -349,38 +348,66 @@
             <div class="tx-pill tx-pill-in">
               <i class="bi bi-arrow-down-circle"></i>
               <span class="tx-label">Поступило в</span>
-              <span class="fw-semibold">{% if tx.building %}{{ tx.building.name }}{% else %}—{% endif %}</span>
+              <span class="fw-semibold">
+                {% if tx.building_snapshot %}
+                  {{ tx.building_snapshot }}
+                {% elif tx.building %}
+                  {{ tx.building.name }}
+                {% else %}
+                  —
+                {% endif %}
+              </span>
             </div>
           {% else %}
             <div class="tx-pill tx-pill-out">
               <i class="bi bi-arrow-up-circle"></i>
               <span class="tx-label">Со склада</span>
-              <span class="fw-semibold">{% if tx.building %}{{ tx.building.name }}{% else %}—{% endif %}</span>
+              <span class="fw-semibold">
+                {% if tx.building %}
+                  {{ tx.building.name }}
+                {% else %}
+                  —
+                {% endif %}
+              </span>
             </div>
 
-            {% if tx.printer and tx.printer.room and tx.printer.room.building %}
-              <div class="tx-pill">
-                <i class="bi bi-buildings"></i>
-                <span class="fw-semibold">{{ tx.printer.room.building.name }}</span>
-              </div>
-            {% else %}
-              <div class="tx-pill">
-                <i class="bi bi-buildings"></i>
-                <span class="fw-semibold">{% if tx.building %}{{ tx.building.name }}{% else %}—{% endif %}</span>
-              </div>
-            {% endif %}
+            <div class="tx-pill">
+              <i class="bi bi-buildings"></i>
+              <span class="fw-semibold">
+                {% if tx.building_snapshot %}
+                  {{ tx.building_snapshot }}
+                {% elif tx.printer and tx.printer.room and tx.printer.room.building %}
+                  {{ tx.printer.room.building.name }}
+                {% elif tx.building %}
+                  {{ tx.building.name }}
+                {% else %}
+                  —
+                {% endif %}
+              </span>
+            </div>
 
             <div class="tx-pill">
               <i class="bi bi-door-closed"></i>
               <span class="fw-semibold">
-                {% if tx.printer and tx.printer.room %}{{ tx.printer.room.number }}{% else %}—{% endif %}
+                {% if tx.room_snapshot %}
+                  {{ tx.room_snapshot }}
+                {% elif tx.printer and tx.printer.room %}
+                  {{ tx.printer.room.number }}
+                {% else %}
+                  —
+                {% endif %}
               </span>
             </div>
 
             <div class="tx-pill">
               <i class="bi bi-printer"></i>
               <span class="fw-semibold">
-                {% if tx.printer %}
+                {% if tx.printer_model_snapshot %}
+                  {{ tx.printer_model_snapshot }}
+                  {% if tx.printer_inventory_tag_snapshot %}
+                    <span class="text-muted">· </span>{{ tx.printer_inventory_tag_snapshot }}
+                  {% endif %}
+                {% elif tx.printer %}
                   {{ tx.printer.printer_model.vendor }} {{ tx.printer.printer_model.model }}
                   {% if tx.printer.inventory_tag %}
                     <span class="text-muted">· </span>{{ tx.printer.inventory_tag }}
@@ -394,7 +421,13 @@
             <div class="tx-pill">
               <i class="bi bi-person"></i>
               <span class="fw-semibold">
-                {% if tx.issued_to %}{{ tx.issued_to }}{% else %}—{% endif %}
+                {% if tx.issued_to_snapshot %}
+                  {{ tx.issued_to_snapshot }}
+                {% elif tx.issued_to %}
+                  {{ tx.issued_to }}
+                {% else %}
+                  —
+                {% endif %}
               </span>
             </div>
           {% endif %}

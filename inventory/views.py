@@ -175,6 +175,10 @@ class StockInCreateView(LoginRequiredMixin, CreateView):
         tx.created_by = self.request.user
         tx.tx_type = StockTransaction.Type.IN
 
+        # SNAPSHOT: фиксируем корпус на момент прихода
+        if tx.building:
+            tx.building_snapshot = tx.building.name
+
         try:
             with transaction.atomic():
                 tx.full_clean()
@@ -321,7 +325,9 @@ class StockOutCreateView(LoginRequiredMixin, CreateView):
                 except Exception:
                     desired_qty = 1
 
-                can_issue = (building_qty >= desired_qty) or (len(available_source_buildings) > 0 and global_qty >= desired_qty)
+                can_issue = (building_qty >= desired_qty) or (
+                    len(available_source_buildings) > 0 and global_qty >= desired_qty
+                )
 
                 # важно: если список источников есть, ограничим поле в форме (вдобавок к get_form_kwargs)
                 form = ctx.get("form")
@@ -373,6 +379,27 @@ class StockOutCreateView(LoginRequiredMixin, CreateView):
             if (tx.printer and tx.printer.room and tx.printer.room.owner_name)
             else ""
         )
+
+        # SNAPSHOT: фиксируем кабинет/корпус/модель принтера на момент выдачи
+        if tx.printer and tx.printer.room:
+            room = tx.printer.room
+            building = room.building if room else None
+            pm = tx.printer.printer_model
+
+            if building:
+                tx.building_snapshot = building.name
+            tx.room_snapshot = room.number or ""
+
+            if pm:
+                tx.printer_model_snapshot = f"{pm.vendor} {pm.model}".strip()
+            tx.printer_inventory_tag_snapshot = tx.printer.inventory_tag or ""
+
+            # кому выдали — фиксируем тоже
+            tx.issued_to_snapshot = tx.issued_to or ""
+
+        # (на всякий) если вдруг выдача без printer — snapshot хотя бы из tx.building
+        if not tx.building_snapshot and tx.building:
+            tx.building_snapshot = tx.building.name
 
         # проверка остатков в корпусе-источнике
         bqty = (

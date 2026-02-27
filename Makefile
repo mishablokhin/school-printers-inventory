@@ -28,6 +28,12 @@ logs:
 sh:
 	docker compose -f docker-compose.yml -f docker-compose.dev.yml exec web sh
 
+snapshot-dry-run:
+	docker compose -f docker-compose.yml -f docker-compose.dev.yml exec web python manage.py backfill_tx_snapshots --dry-run
+
+snapshot-fill:
+	docker compose -f docker-compose.yml -f docker-compose.dev.yml exec web python manage.py backfill_tx_snapshots
+
 migrate:
 	docker compose -f docker-compose.yml -f docker-compose.dev.yml exec web python manage.py migrate
 
