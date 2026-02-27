@@ -121,10 +121,25 @@ class JournalView(LoginRequiredMixin, ListView):
     def get_queryset(self):
         qs = (
             StockTransaction.objects
-            .select_related("created_by", "cartridge", "building", "printer", "printer__room", "printer__printer_model")
+            .select_related(
+                "created_by",
+                "cartridge",
+                "building",
+                "printer",
+                "printer__room",
+                "printer__printer_model",
+            )
             .order_by("-created_at")
         )
+
         q = (self.request.GET.get("q") or "").strip()
+        tx_type = (self.request.GET.get("type") or "").strip().upper()
+
+        # фильтр по типу движения - выдача или приход на склад
+        if tx_type in (StockTransaction.Type.IN, StockTransaction.Type.OUT):
+            qs = qs.filter(tx_type=tx_type)
+
+        # поиск
         if q:
             qs = qs.filter(
                 Q(cartridge__code__icontains=q) |
@@ -133,9 +148,18 @@ class JournalView(LoginRequiredMixin, ListView):
                 Q(printer__inventory_tag__icontains=q) |
                 Q(printer__printer_model__model__icontains=q) |
                 Q(printer__printer_model__vendor__icontains=q) |
-                Q(building__name__icontains=q)
+                Q(building__name__icontains=q) |
+                Q(printer__room__number__icontains=q) |
+                Q(printer__room__building__name__icontains=q)
             )
+
         return qs
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        ctx["q"] = (self.request.GET.get("q") or "").strip()
+        ctx["type_filter"] = (self.request.GET.get("type") or "").strip().upper()
+        return ctx
 
 
 class StockInCreateView(LoginRequiredMixin, CreateView):
