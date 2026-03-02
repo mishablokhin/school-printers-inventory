@@ -56,10 +56,10 @@ server-down:
 	docker compose -f docker-compose.yml -f docker-compose.prod.yml down
 
 rebuild-stock-dry-run:
-	docker compose -f docker-compose.yml -f docker-compose.dev.yml exec web python manage.py rebuild_stocks --dry-run
+	docker compose -f docker-compose.yml -f docker-compose.dev.yml exec web python manage.py rebuild_stock --dry-run
 
 rebuild-stock:
-	docker compose -f docker-compose.yml -f docker-compose.dev.yml exec web python manage.py rebuild_stocks
+	docker compose -f docker-compose.yml -f docker-compose.dev.yml exec web python manage.py rebuild_stock
 
 server-pull:
 	git pull --ff-only
