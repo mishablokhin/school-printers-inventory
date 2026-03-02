@@ -42,6 +42,7 @@
 
 </div>
 
+{# ===== Поиск ===== #}
 <form class="mb-3" method="get">
   <div class="input-group">
     <span class="input-group-text bg-body-tertiary">
@@ -51,15 +52,71 @@
     <input
       class="form-control"
       name="q"
-      value="{{ request.GET.q }}"
+      value="{{ q }}"
       placeholder="Поиск по модели картриджа, корпусу, принтеру, кабинету, сотруднику..."
     >
+
+    {% if type_filter %}
+      <input type="hidden" name="type" value="{{ type_filter }}">
+    {% endif %}
 
     <button class="btn btn-outline-secondary" type="submit" title="Поиск">
       <i class="bi bi-arrow-right"></i>
     </button>
   </div>
 </form>
+
+{# ===== Фильтр ===== #}
+<div class="card shadow-sm mb-3">
+  <div class="card-body py-3">
+
+    <div class="d-flex align-items-start gap-3 mb-3">
+      <div class="text-muted fs-5">
+        <i class="bi bi-funnel"></i>
+      </div>
+      <div>
+        <div class="fw-semibold">
+          Фильтр по типу движения
+        </div>
+        <div class="text-muted small">
+          Выберите, какие записи отображать в журнале
+        </div>
+      </div>
+    </div>
+
+    <div class="tx-filter-wrap">
+
+      <a
+        class="btn btn-outline-primary d-flex align-items-center justify-content-center gap-2 {% if type_filter == 'OUT' %}active{% endif %}"
+        href="?{% if q %}q={{ q|urlencode }}&{% endif %}type=OUT"
+        title="Показать только выдачи"
+      >
+        <i class="bi bi-box-arrow-up"></i>
+        <span>Выдачи</span>
+      </a>
+
+      <a
+        class="btn btn-outline-success d-flex align-items-center justify-content-center gap-2 {% if type_filter == 'IN' %}active{% endif %}"
+        href="?{% if q %}q={{ q|urlencode }}&{% endif %}type=IN"
+        title="Показать только приходы"
+      >
+        <i class="bi bi-box-arrow-in-down"></i>
+        <span>Приходы</span>
+      </a>
+
+      <a
+        class="btn btn-outline-secondary d-flex align-items-center justify-content-center gap-2 {% if not type_filter %}active{% endif %}"
+        href="?{% if q %}q={{ q|urlencode }}{% endif %}"
+        title="Показать все записи"
+      >
+        <i class="bi bi-list"></i>
+        <span>Все записи</span>
+      </a>
+
+    </div>
+
+  </div>
+</div>
 
 <style>
   .tx-row { border-top: 1px solid rgba(0,0,0,.06); }
@@ -183,6 +240,27 @@
     font-size: 0.85rem;
     color: rgba(0,0,0,.45);
   }
+
+  /* фильтр – адаптив */
+  .tx-filter-wrap{
+    display:flex;
+    flex-wrap:wrap;
+    gap:.75rem;
+  }
+  @media (min-width: 768px){
+    .tx-filter-wrap .btn{
+      flex:1 1 0;
+    }
+  }
+  @media (max-width: 767px){
+    .tx-filter-wrap{
+      flex-direction: column;
+    }
+    .tx-filter-wrap .btn{
+      width:100%;
+      font-size:.9rem;
+    }
+  }
 </style>
 
 <div class="card shadow-sm">
@@ -216,7 +294,7 @@
               <span class="fw-semibold">{{ tx.qty }} шт.</span>
             </span>
 
-            {# ✅ признак баланса с разными подписями для прихода/выдачи #}
+            {# Признак баланса с разными подписями для прихода/выдачи #}
             {% if tx.tx_type == "IN" %}
               {% if tx.on_balance %}
                 <span class="tx-pill tx-pill-balance on">
@@ -266,47 +344,73 @@
         </div>
 
         <div class="mt-2 tx-meta">
-
           {% if tx.tx_type == "IN" %}
             <div class="tx-pill tx-pill-in">
               <i class="bi bi-arrow-down-circle"></i>
               <span class="tx-label">Поступило в</span>
-              <span class="fw-semibold">{% if tx.building %}{{ tx.building.name }}{% else %}—{% endif %}</span>
+              <span class="fw-semibold">
+                {% if tx.building_snapshot %}
+                  {{ tx.building_snapshot }}
+                {% elif tx.building %}
+                  {{ tx.building.name }}
+                {% else %}
+                  —
+                {% endif %}
+              </span>
             </div>
           {% else %}
-
             <div class="tx-pill tx-pill-out">
               <i class="bi bi-arrow-up-circle"></i>
               <span class="tx-label">Со склада</span>
-              <span class="fw-semibold">{% if tx.building %}{{ tx.building.name }}{% else %}—{% endif %}</span>
+              <span class="fw-semibold">
+                {% if tx.building %}
+                  {{ tx.building.name }}
+                {% else %}
+                  —
+                {% endif %}
+              </span>
             </div>
 
-            {% if tx.printer and tx.printer.room and tx.printer.room.building %}
-              <div class="tx-pill">
-                <i class="bi bi-buildings"></i>
-                <span class="fw-semibold">{{ tx.printer.room.building.name }}</span>
-              </div>
-            {% else %}
-              <div class="tx-pill">
-                <i class="bi bi-buildings"></i>
-                <span class="fw-semibold">{% if tx.building %}{{ tx.building.name }}{% else %}—{% endif %}</span>
-              </div>
-            {% endif %}
+            <div class="tx-pill">
+              <i class="bi bi-buildings"></i>
+              <span class="fw-semibold">
+                {% if tx.building_snapshot %}
+                  {{ tx.building_snapshot }}
+                {% elif tx.printer and tx.printer.room and tx.printer.room.building %}
+                  {{ tx.printer.room.building.name }}
+                {% elif tx.building %}
+                  {{ tx.building.name }}
+                {% else %}
+                  —
+                {% endif %}
+              </span>
+            </div>
 
             <div class="tx-pill">
               <i class="bi bi-door-closed"></i>
               <span class="fw-semibold">
-                {% if tx.printer and tx.printer.room %}{{ tx.printer.room.number }}{% else %}—{% endif %}
+                {% if tx.room_snapshot %}
+                  {{ tx.room_snapshot }}
+                {% elif tx.printer and tx.printer.room %}
+                  {{ tx.printer.room.number }}
+                {% else %}
+                  —
+                {% endif %}
               </span>
             </div>
 
             <div class="tx-pill">
               <i class="bi bi-printer"></i>
               <span class="fw-semibold">
-                {% if tx.printer %}
+                {% if tx.printer_model_snapshot %}
+                  {{ tx.printer_model_snapshot }}
+                  {% if tx.printer_inventory_tag_snapshot %}
+                    <span class="text-muted">· </span>{{ tx.printer_inventory_tag_snapshot }}
+                  {% endif %}
+                {% elif tx.printer %}
                   {{ tx.printer.printer_model.vendor }} {{ tx.printer.printer_model.model }}
                   {% if tx.printer.inventory_tag %}
-                    <span class="text-muted">·</span>{{ tx.printer.inventory_tag }}
+                    <span class="text-muted">· </span>{{ tx.printer.inventory_tag }}
                   {% endif %}
                 {% else %}
                   —
@@ -317,10 +421,15 @@
             <div class="tx-pill">
               <i class="bi bi-person"></i>
               <span class="fw-semibold">
-                {% if tx.issued_to %}{{ tx.issued_to }}{% else %}—{% endif %}
+                {% if tx.issued_to_snapshot %}
+                  {{ tx.issued_to_snapshot }}
+                {% elif tx.issued_to %}
+                  {{ tx.issued_to }}
+                {% else %}
+                  —
+                {% endif %}
               </span>
             </div>
-
           {% endif %}
         </div>
 
@@ -350,7 +459,10 @@
     <ul class="pagination mb-0">
       {% if page_obj.has_previous %}
         <li class="page-item">
-          <a class="page-link" href="?page={{ page_obj.previous_page_number }}&q={{ request.GET.q }}">Назад</a>
+          <a class="page-link"
+             href="?page={{ page_obj.previous_page_number }}{% if q %}&q={{ q|urlencode }}{% endif %}{% if type_filter %}&type={{ type_filter }}{% endif %}">
+            Назад
+          </a>
         </li>
       {% else %}
         <li class="page-item disabled"><span class="page-link">Назад</span></li>
@@ -362,7 +474,10 @@
 
       {% if page_obj.has_next %}
         <li class="page-item">
-          <a class="page-link" href="?page={{ page_obj.next_page_number }}&q={{ request.GET.q }}">Вперёд</a>
+          <a class="page-link"
+             href="?page={{ page_obj.next_page_number }}{% if q %}&q={{ q|urlencode }}{% endif %}{% if type_filter %}&type={{ type_filter }}{% endif %}">
+            Вперёд
+          </a>
         </li>
       {% else %}
         <li class="page-item disabled"><span class="page-link">Вперёд</span></li>

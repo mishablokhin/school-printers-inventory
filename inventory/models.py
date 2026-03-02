@@ -70,7 +70,7 @@ class Printer(models.Model):
         return f"{self.printer_model}{inv} – {self.room}"
 
 
-# ✅ Теперь глобальный остаток хранится раздельно: на балансе / не на балансе
+# Теперь глобальный остаток хранится раздельно: на балансе / не на балансе
 class GlobalStock(models.Model):
     cartridge = models.ForeignKey(
         CartridgeModel,
@@ -90,7 +90,7 @@ class GlobalStock(models.Model):
         return f"{self.cartridge}{flag}: {self.qty}"
 
 
-# ✅ Теперь склад по корпусу тоже раздельно по балансу
+# Теперь склад по корпусу тоже раздельно по балансу
 class BuildingStock(models.Model):
     building = models.ForeignKey(Building, on_delete=models.CASCADE, related_name="stocks")
     cartridge = models.ForeignKey(CartridgeModel, on_delete=models.CASCADE, related_name="building_stocks")
@@ -121,13 +121,25 @@ class StockTransaction(models.Model):
     cartridge = models.ForeignKey(CartridgeModel, on_delete=models.CASCADE, related_name="transactions")
     qty = models.PositiveIntegerField()
 
-    # ✅ Новый флаг: эта партия на балансе школы
+    # Новый флаг: эта партия на балансе школы
     on_balance = models.BooleanField(default=False)
 
+    # “живые” связи (для навигации/аналитики) – могут меняться со временем
     building = models.ForeignKey(Building, on_delete=models.PROTECT, null=True, blank=True)
     printer = models.ForeignKey(Printer, on_delete=models.PROTECT, null=True, blank=True)
+
     issued_to = models.CharField(max_length=255, blank=True)
     comment = models.TextField(blank=True)
+
+    # SNAPSHOT-поля (фиксируются при создании транзакции)
+    # Корпус/кабинет/принтер на момент операции — чтобы журнал не “плыл”
+    building_snapshot = models.CharField(max_length=120, blank=True)
+    room_snapshot = models.CharField(max_length=30, blank=True)
+
+    printer_model_snapshot = models.CharField(max_length=255, blank=True)
+    printer_inventory_tag_snapshot = models.CharField(max_length=80, blank=True)
+
+    issued_to_snapshot = models.CharField(max_length=255, blank=True)
 
     def clean(self):
         if self.qty == 0:
