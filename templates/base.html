@@ -130,6 +130,13 @@
               </a>
             </li>
 
+            <li class="nav-item">
+              <a class="nav-link {% if rm and rm.app_name == 'exports' and rm.url_name == 'transactions' %}active{% endif %}"
+                 href="{% url 'exports:home' %}">
+                Экспорт
+              </a>
+            </li>
+
             {# ===== Справочники ===== #}
             <li class="nav-item dropdown">
               <a class="nav-link dropdown-toggle

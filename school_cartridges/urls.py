@@ -9,4 +9,5 @@ urlpatterns = [
     path("me/", core_views.me, name="me"),
     path("logout/", core_views.logout_view, name="logout"),
     path("inventory/", include("inventory.urls")),
+    path("exports/", include("exports.urls", namespace="exports")),
 ]

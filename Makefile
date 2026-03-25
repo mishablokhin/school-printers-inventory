@@ -55,7 +55,6 @@ server-up:
 server-down:
 	docker compose -f docker-compose.yml -f docker-compose.prod.yml down
 
-
 server-pull:
 	git pull --ff-only
 
