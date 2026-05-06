@@ -124,7 +124,11 @@
 
   .tx-pad { padding-top: .65rem; padding-bottom: .65rem; }
 
-  .tx-meta { display:flex; flex-wrap:wrap; gap: .35rem .6rem; }
+  .tx-meta {
+    display:flex;
+    flex-wrap:wrap;
+    gap: .35rem .6rem;
+  }
 
   .tx-pill{
     display:inline-flex;
@@ -136,7 +140,21 @@
     white-space: nowrap;
     font-size: .85rem;
     line-height: 1.15;
+    max-width: 100%;
   }
+
+  .tx-pill-printer{
+    white-space: normal;
+    align-items: flex-start;
+    min-width: 0;
+  }
+
+  .tx-pill-printer .fw-semibold{
+    min-width: 0;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+  }
+
   .tx-label { color: rgba(0,0,0,.55); }
 
   .tx-pill-in{
@@ -144,25 +162,33 @@
     border: 1px solid rgba(25,135,84,.18);
     color: rgba(25,135,84,.95);
   }
-  .tx-pill-in .tx-label { color: rgba(25,135,84,.75); }
+
+  .tx-pill-in .tx-label {
+    color: rgba(25,135,84,.75);
+  }
 
   .tx-pill-out{
     background: rgba(13,110,253,.10);
     border: 1px solid rgba(13,110,253,.22);
     color: rgba(13,110,253,.95);
   }
-  .tx-pill-out .tx-label { color: rgba(13,110,253,.75); }
+
+  .tx-pill-out .tx-label {
+    color: rgba(13,110,253,.75);
+  }
 
   .tx-pill-balance{
     border: 1px solid rgba(0,0,0,.10);
     background: rgba(0,0,0,.03);
     color: rgba(0,0,0,.65);
   }
+
   .tx-pill-balance.on{
     border-color: rgba(25,135,84,.22);
     background: rgba(25,135,84,.08);
     color: rgba(25,135,84,.95);
   }
+
   .tx-pill-balance.off{
     border-color: rgba(108,117,125,.22);
     background: rgba(108,117,125,.08);
@@ -175,6 +201,7 @@
     justify-content:space-between;
     gap:1rem;
   }
+
   .tx-left{
     display:flex;
     align-items:center;
@@ -182,16 +209,33 @@
     gap:.4rem .6rem;
     min-width: 0;
   }
-  .tx-date{ color: rgba(0,0,0,.6); font-size:.9rem; white-space:nowrap; }
 
-  .user-box { text-align: right; }
+  .tx-date{
+    color: rgba(0,0,0,.6);
+    font-size:.9rem;
+    white-space:nowrap;
+  }
+
+  .tx-inventory-tag{
+  font-weight: 400;
+  color: rgba(0,0,0,.55);
+}
+
+  .user-box {
+    text-align: right;
+  }
+
   .user-line {
     display:inline-flex;
     align-items:center;
     gap:.45rem;
     justify-content:flex-end;
   }
-  .user-name{ font-size:.9rem; }
+
+  .user-name{
+    font-size:.9rem;
+  }
+
   .user-avatar{
     width: 24px;
     height: 24px;
@@ -200,6 +244,7 @@
     object-fit: cover;
     flex: 0 0 auto;
   }
+
   .user-avatar-fallback{
     width: 24px;
     height: 24px;
@@ -216,10 +261,12 @@
     gap:.4rem .6rem;
     margin-top: .35rem;
   }
+
   .tx-item .tx-main{
     font-weight: 700;
     font-size: 1rem;
   }
+
   .tx-item .tx-title{
     color: rgba(0,0,0,.55);
     font-size:.9rem;
@@ -229,6 +276,7 @@
     margin-top:.45rem;
     font-size:.9rem;
   }
+
   .tx-comment .box{
     background: rgba(0,0,0,.03);
     border: 1px solid rgba(0,0,0,.06);
@@ -241,21 +289,23 @@
     color: rgba(0,0,0,.45);
   }
 
-  /* фильтр – адаптив */
   .tx-filter-wrap{
     display:flex;
     flex-wrap:wrap;
     gap:.75rem;
   }
+
   @media (min-width: 768px){
     .tx-filter-wrap .btn{
       flex:1 1 0;
     }
   }
+
   @media (max-width: 767px){
     .tx-filter-wrap{
       flex-direction: column;
     }
+
     .tx-filter-wrap .btn{
       width:100%;
       font-size:.9rem;
@@ -294,7 +344,6 @@
               <span class="fw-semibold">{{ tx.qty }} шт.</span>
             </span>
 
-            {# Признак баланса с разными подписями для прихода/выдачи #}
             {% if tx.tx_type == "IN" %}
               {% if tx.on_balance %}
                 <span class="tx-pill tx-pill-balance on">
@@ -399,24 +448,33 @@
               </span>
             </div>
 
-            <div class="tx-pill">
-              <i class="bi bi-printer"></i>
-              <span class="fw-semibold">
-                {% if tx.printer_model_snapshot %}
-                  {{ tx.printer_model_snapshot }}
-                  {% if tx.printer_inventory_tag_snapshot %}
-                    <span class="text-muted">· </span>{{ tx.printer_inventory_tag_snapshot }}
-                  {% endif %}
-                {% elif tx.printer %}
-                  {{ tx.printer.printer_model.vendor }} {{ tx.printer.printer_model.model }}
-                  {% if tx.printer.inventory_tag %}
-                    <span class="text-muted">· </span>{{ tx.printer.inventory_tag }}
-                  {% endif %}
-                {% else %}
-                  —
-                {% endif %}
-              </span>
-            </div>
+        <div class="tx-pill tx-pill-printer">
+          <i class="bi bi-printer"></i>
+
+          <span class="fw-semibold">
+            {% if tx.printer_model_snapshot %}
+              {{ tx.printer_model_snapshot }}
+
+              {% if tx.printer_inventory_tag_snapshot %}
+                <span class="tx-inventory-tag">
+                  · {{ tx.printer_inventory_tag_snapshot }}
+                </span>
+              {% endif %}
+
+            {% elif tx.printer %}
+              {{ tx.printer.printer_model.vendor }} {{ tx.printer.printer_model.model }}
+
+              {% if tx.printer.inventory_tag %}
+                <span class="tx-inventory-tag">
+                  · {{ tx.printer.inventory_tag }}
+                </span>
+              {% endif %}
+
+            {% else %}
+              —
+            {% endif %}
+          </span>
+        </div>
 
             <div class="tx-pill">
               <i class="bi bi-person"></i>
